@@ -35,88 +35,38 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "uart_settings.h"
+#ifndef UART_WEBUSB_H
+#define UART_WEBUSB_H
 
-UartSettings::UartSettings()
-    : portName("COM1"),
-      baudRate(0),
-      flowControl(UartFlowControlNone),
-      parity(UartParityNone),
-      stopBits(UartStopBitsOne),
-      dataBits(UartDataBitsEight)
-{
-}
+#include "transport.h"
 
-UartSettings::UartSettings(const UartCommunicationParameters &communicationParameters)
-    : portName(communicationParameters.portName),
-      baudRate(communicationParameters.baudRate),
-      flowControl(communicationParameters.flowControl),
-      parity(communicationParameters.parity),
-      stopBits(communicationParameters.stopBits),
-      dataBits(communicationParameters.dataBits)
-{
-}
+#include <stdint.h>
 
-UartSettings::~UartSettings()
+class WebusbInterface : public Transport
 {
-}
+public:
 
-void UartSettings::setPortName(const std::string value)
-{
-    portName = value;
-}
 
-void UartSettings::setBaudRate(const uint32_t value)
-{
-    baudRate = value;
-}
+    WebusbInterface();
 
-void UartSettings::setFlowControl(const UartFlowControl value)
-{
-    flowControl = value;
-}
+    ~WebusbInterface();
 
-void UartSettings::setParity(const UartParity value)
-{
-    parity = value;
-}
 
-void UartSettings::setStopBits(const UartStopBits value)
-{
-    stopBits = value;
-}
+    uint32_t open(status_cb_t status_callback, data_cb_t data_callback, log_cb_t log_callback);
 
-void UartSettings::setDataBits(const UartDataBits value)
-{
-    dataBits = value;
-}
 
-std::string UartSettings::getPortName()
-{
-    return portName;
-}
+    uint32_t close();
 
-uint32_t UartSettings::getBaudRate() const
-{
-    return baudRate;
-}
+    uint32_t send(std::vector<uint8_t> &data);
+	uint32_t dataReceived(uint8_t *data, uint32_t length);
 
-UartFlowControl UartSettings::getFlowControl() const
-{
-    return flowControl;
-}
+};
 
-UartParity UartSettings::getParity() const
-{
-    return parity;
-}
 
-UartStopBits UartSettings::getStopBits() const
-{
-    return stopBits;
-}
 
-UartDataBits UartSettings::getDataBits() const
-{
-    return dataBits;
-}
+extern WebusbInterface* currentInterface;
+extern std::function<uint32_t(uint8_t*, uint32_t)> emscriptenSendData;
+
+
+
+#endif //UART_WEBUSB_H

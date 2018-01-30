@@ -40,8 +40,7 @@
 #include "adapter_internal.h"
 #include "serialization_transport.h"
 #include "h5_transport.h"
-#include "uart_boost.h"
-#include "uart_settings_boost.h"
+#include "webusb_interface.h"
 #include "serial_port_enum.h"
 #include "conn_systemreset_app.h"
 #include "ble_common.h"
@@ -106,32 +105,7 @@ physical_layer_t *sd_rpc_physical_layer_create_uart(const char * port_name, uint
 {
     auto physicalLayer = static_cast<physical_layer_t *>(malloc(sizeof(physical_layer_t)));
 
-    UartCommunicationParameters uartSettings;
-    uartSettings.portName = port_name;
-    uartSettings.baudRate = baud_rate;
-
-    if (flow_control == SD_RPC_FLOW_CONTROL_NONE)
-    {
-        uartSettings.flowControl = UartFlowControlNone;
-    }
-    else if (flow_control == SD_RPC_FLOW_CONTROL_HARDWARE)
-    {
-        uartSettings.flowControl = UartFlowControlHardware;
-    }
-
-    if (parity == SD_RPC_PARITY_NONE)
-    {
-        uartSettings.parity = UartParityNone;
-    }
-    else if (parity == SD_RPC_PARITY_EVEN)
-    {
-        uartSettings.parity = UartParityEven;
-    }
-
-    uartSettings.stopBits = UartStopBitsOne;
-    uartSettings.dataBits = UartDataBitsEight;
-
-    auto uart = new UartBoost(uartSettings);
+    auto uart = new WebusbInterface();
     physicalLayer->internal = static_cast<void *>(uart);
     return physicalLayer;
 }
