@@ -101,12 +101,13 @@ uint32_t sd_rpc_serial_port_enum(sd_rpc_serial_port_desc_t serial_port_descs[], 
     return ret;
 }
 
-physical_layer_t *sd_rpc_physical_layer_create_uart(const char * port_name, uint32_t baud_rate, sd_rpc_flow_control_t flow_control, sd_rpc_parity_t parity)
+
+physical_layer_t *sd_rpc_physical_layer_create_webusb()
 {
     auto physicalLayer = static_cast<physical_layer_t *>(malloc(sizeof(physical_layer_t)));
 
-    auto uart = new WebusbInterface();
-    physicalLayer->internal = static_cast<void *>(uart);
+    auto webusb = new WebusbInterface();
+    physicalLayer->internal = static_cast<void *>(webusb);
     return physicalLayer;
 }
 

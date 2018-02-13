@@ -35,12 +35,10 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef UART_WEBUSB_H
-#define UART_WEBUSB_H
+#ifndef WEBUSB_INTERFACE_H
+#define WEBUSB_INTERFACE_H
 
 #include "transport.h"
-
-#include <stdint.h>
 
 class WebusbInterface : public Transport
 {
@@ -49,10 +47,11 @@ public:
 
     WebusbInterface();
 
-    ~WebusbInterface();
+   /// ~WebusbInterface();
 
 
     uint32_t open(status_cb_t status_callback, data_cb_t data_callback, log_cb_t log_callback);
+   // uint32_t open();
 
 
     uint32_t close();
@@ -63,10 +62,10 @@ public:
 };
 
 
-
+/*
 extern WebusbInterface* currentInterface;
 extern std::function<uint32_t(uint8_t*, uint32_t)> emscriptenSendData;
 
+*/
 
-
-#endif //UART_WEBUSB_H
+#endif //WEBUSB_INTERFACE_H

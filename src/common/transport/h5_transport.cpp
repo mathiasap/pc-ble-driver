@@ -133,11 +133,13 @@ uint32_t H5Transport::open(status_cb_t status_callback, data_cb_t data_callback,
         log("Not able to open, current state is not valid");
         return NRF_ERROR_INTERNAL;
     }
-
+    
     startStateMachine();
+    
     auto _exitCriterias = dynamic_cast<StartExitCriterias*>(exitCriterias[STATE_START]);
-
+    
     auto errorCode = Transport::open(status_callback, data_callback, log_callback);
+    
     lastPacket.clear();
 
     if (errorCode != NRF_SUCCESS)
@@ -149,6 +151,7 @@ uint32_t H5Transport::open(status_cb_t status_callback, data_cb_t data_callback,
 
     status_callback = std::bind(&H5Transport::statusHandler, this, std::placeholders::_1, std::placeholders::_2);
     data_callback = std::bind(&H5Transport::dataHandler, this, std::placeholders::_1, std::placeholders::_2);
+    
     errorCode = nextTransportLayer->open(status_callback, data_callback, log_callback);
 
     if (errorCode != NRF_SUCCESS)
@@ -160,13 +163,13 @@ uint32_t H5Transport::open(status_cb_t status_callback, data_cb_t data_callback,
 
     _exitCriterias->isOpened = true;
     syncWaitCondition.notify_all();
-
     if (waitForState(STATE_ACTIVE, OPEN_WAIT_TIMEOUT))
     {
         return NRF_SUCCESS;
     }
     else
     {
+        return currentState + 13;
         return NRF_ERROR_TIMEOUT;
     }
 }

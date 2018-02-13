@@ -74,6 +74,12 @@ SD_RPC_API uint32_t sd_rpc_serial_port_enum(sd_rpc_serial_port_desc_t serial_por
  */
 SD_RPC_API physical_layer_t *sd_rpc_physical_layer_create_uart(const char * port_name, uint32_t baud_rate, sd_rpc_flow_control_t flow_control, sd_rpc_parity_t parity);
 
+/**@brief Create a new webusb physical layer.
+ *
+ * @retval The physical layer or NULL.
+ */
+SD_RPC_API physical_layer_t *sd_rpc_physical_layer_create_webusb();
+
 /**@brief Create a new data link layer.
  *
  * @param[in]  physical_layer  The physical layer to use with this data link layer.

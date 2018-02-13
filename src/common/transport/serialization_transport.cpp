@@ -73,9 +73,8 @@ uint32_t SerializationTransport::open(status_cb_t status_callback, evt_cb_t even
     statusCallback = status_callback;
     eventCallback = event_callback;
     logCallback = log_callback;
-
+    
     data_cb_t dataCallback = std::bind(&SerializationTransport::readHandler, this, std::placeholders::_1, std::placeholders::_2);
-
     uint32_t errorCode = nextTransportLayer->open(status_callback, dataCallback, log_callback);
 
     if (errorCode != NRF_SUCCESS)
