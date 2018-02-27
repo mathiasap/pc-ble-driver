@@ -4,6 +4,8 @@ class Transport{
         this.statusCallback = status_callback;
         this.dataCallback = data_callback;
         this.logCallback = log_callback;
+
+        return NRF_SUCCESS;
     }
     close(){
         return 0;
@@ -13,4 +15,4 @@ class Transport{
     }
 
 }
-module.exports = Transport;
+//module.exports = Transport;

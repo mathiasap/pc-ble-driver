@@ -101,11 +101,11 @@ class ResetExitCriterias extends ExitCriterias{
 }
 
 
-
+/*
 module.exports = {
     StartExitCriterias: StartExitCriterias,
     UninitializedExitCriterias: UninitializedExitCriterias,
     InitializedExitCriterias: InitializedExitCriterias,
     ActiveExitCriterias: ActiveExitCriterias,
     ResetExitCriterias: ResetExitCriterias
-}
+}*/

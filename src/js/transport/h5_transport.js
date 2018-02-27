@@ -1,5 +1,5 @@
-const Transport = require('./transport');
-const ExitCriterias = require('./h5_transport_exit_criterias')
+//const Transport = require('./transport');
+//const ExitCriterias = require('./h5_transport_exit_criterias')
 
 
 const h5_state = Object.freeze({
@@ -12,6 +12,11 @@ const h5_state = Object.freeze({
     STATE_UNKNOWN:6
 });
 
+const NON_ACTIVE_STATE_TIMEOUT = 250;
+const PACKET_RETRANSMISSIONS = 6;
+const OPEN_WAIT_TIMEOUT = 2000;   // Duration to wait for state ACTIVE after open is called
+const RESET_WAIT_DURATION = 300;
+
 class H5Transport extends Transport{
     constructor(nextTransportLayer, retransmission_interval){
         super();
@@ -23,16 +28,62 @@ class H5Transport extends Transport{
         this.outGoingPacketCount = 0;
         this.errorPacketCount = 0;
         this.currentState = h5_state.STATE_START;
+        this.prevState = null;
+        this.stateUpdateCallback = null;
+        this.lastPacket = [];
+        this.stateChangedEvent = new Event('stateChanged');
+        this.boundStateMachineWorker = this.stateMachineWorker.bind(this)
 
         this.nextTransportLayer = nextTransportLayer;
         this.retransmission_interval = retransmission_interval;
 
         this.setupStateMachine();
+
+        /*this.startStateMachine();
+        dispatchEvent(this.stateChangedEvent);
+        dispatchEvent(this.stateChangedEvent);
+        this.stopStateMachine();
+        dispatchEvent(this.stateChangedEvent);
+        this.sendControlPacket(control_pkt_type.CONTROL_PKT_SYNC);*/
     }
 
-    open(status_callback, data_callback, log_callback){
+    async open(status_callback, data_callback, log_callback){
+        //return new Promise(resolve => {
+        if (this.currentState !== h5_state.STATE_START)
+        {
+            this.log("Not able to open, current state is not valid");
+            return NRF_ERROR_INTERNAL;
+        }
 
-    }
+        this.startStateMachine();
+
+        let _exitCriterias = this.exitCriterias[h5_state.STATE_START];
+        let errorCode = super.open(status_callback, data_callback, log_callback);
+        this.lastPacket.length = 0;
+
+        if (errorCode != NRF_SUCCESS){
+            _exitCriterias.ioResourceError = true;
+            //Promise.resolve(errorCode);
+            return errorCode;
+        }
+
+        errorCode = await this.nextTransportLayer.open(status_callback, data_callback, log_callback);
+
+        if (errorCode != NRF_SUCCESS){
+            _exitCriterias.ioResourceError = true;
+            return NRF_ERROR_INTERNAL;
+        }
+
+        _exitCriterias.isOpened = true;
+        errorCode = await this.waitForState(h5_state.STATE_ACTIVE, OPEN_WAIT_TIMEOUT);
+        if(errorCode){
+            return NRF_SUCCESS;
+        }
+        else {
+            return NRF_ERROR_TIMEOUT;
+        }
+    //});
+}
 
     close(){
 
@@ -52,8 +103,61 @@ class H5Transport extends Transport{
 
     }
 
-    sendControlPacket(type){
+    waitForState(state, timeoutMs){
+        return new Promise(resolve => {
+            let timeoutFunc = function() {
+                removeEventListener('stateChanged', stateChangedFunc);
+                console.log("not resolved");
+                resolve(false);
 
+            }.bind(this);
+
+            let stateChangedFunc = function() {
+                if (this.currentState === target){
+                    removeEventListener('stateChanged', stateChangedFunc);
+                    clearTimeout(timeoutFunc);
+                    console.log("resolved");
+                    resolve(true);
+                }
+            }.bind(this);
+
+            let timeout = setTimeout(timeoutFunc, timeoutMs);
+            addEventListener('stateChanged', stateChangedFunc);
+            console.log("wait for state promise..")
+        });
+    }
+
+    sendControlPacket(type){
+        console.log("Type ", type);
+        let h5_packet;
+
+        switch (type) {
+            case control_pkt_type.CONTROL_PKT_RESET:
+                h5_packet = h5_pkt_type_t.RESET_PACKET;
+                break;
+            case control_pkt_type.CONTROL_PKT_SYNC:
+            case control_pkt_type.CONTROL_PKT_SYNC_RESPONSE:
+            case control_pkt_type.CONTROL_PKT_SYNC_CONFIG:
+            case control_pkt_type.CONTROL_PKT_SYNC_CONFIG_RESPONSE:
+                h5_packet = h5_pkt_type_t.LINK_CONTROL_PACKET;
+                break;
+            case control_pkt_type.CONTROL_PKT_ACK:
+                h5_packet = h5_pkt_type_t.ACK_PACKET;
+                break;
+            default:
+                h5_packet = h5_pkt_type_t.LINK_CONTROL_PACKET;
+        }
+
+        let payload = pkt_pattern[type];
+        let h5Packet = [];
+        h5_encode(payload, h5Packet, 0, type === control_pkt_type.CONTROL_PKT_ACK ? ackNum : 0, false, false, h5_packet);
+
+
+        let slipPacket = [];
+        slip_encode(new Uint8Array(h5Packet), slipPacket);
+
+        this.logPacket(true, h5Packet);
+        this.nextTransportLayer.send(new Uint8Array(slipPacket));
     }
 
     incrementSeqNum(){
@@ -63,70 +167,246 @@ class H5Transport extends Transport{
 
     }
 
+    log(message){
+        // log
+    }
+
+    logPacket(outgoing, packet){
+        if (outgoing)
+        {
+            this.outgoingPacketCount++;
+        }
+        else
+        {
+            this.incomingPacketCount++;
+        }
+
+        let logLine = this.h5PktToString(outgoing, packet);
+
+        if (this.logCallback !== undefined)
+        {
+            this.logCallback(sd_rpc_log_severity_t.SD_RPC_LOG_DEBUG, logLine);
+        }
+        else
+        {
+            console.log(logLine);
+        }
+    }
+
+    h5PktToString(out, h5Packet) {
+        return "";
+    }
+
     setupStateMachine(){
         this.stateActions = {};
         this.exitCriterias = {};
 
+        // State Start
         this.stateActions[h5_state.STATE_START] = function(){
             const exit = this.exitCriterias[h5_state.STATE_START];
             exit.reset();
-            this.currentStateAction = function(){
+
+            this.stateUpdateCallback = setInterval(function(){
                 if(!exit.isFullfilled()){
-                    return h5_state.STATE_START;
+                    return;
                 }
 
                 if (exit.ioResourceError){
-                    return h5_state.STATE_FAILED;
+                    this.currentState =  h5_state.STATE_FAILED;
+                    dispatchEvent(this.stateChangedEvent);
+                    return;
                 }
 
                 else if (exit.isOpened){
-                    return h5_state.STATE_RESET;
+                    this.currentState =  h5_state.STATE_RESET;
+                    dispatchEvent(this.stateChangedEvent);
+                    return;
                 }
 
                 else{
-                    return h5_state.STATE_FAILED;
+                    this.currentState =  h5_state.STATE_FAILED;
+                    dispatchEvent(this.stateChangedEvent);
+                    return;
                 }
-            }.bind(this);
-
+            }.bind(this), 100);
         }.bind(this);
 
+        // State reset
         this.stateActions[h5_state.STATE_RESET] = function(){
+            const exit = this.exitCriterias[h5_state.STATE_RESET];
+            exit.reset();
 
+            this.stateUpdateCallback = setInterval(function(){
+                if(!exit.isFullfilled()){
+                    this.sendControlPacket(control_pkt_type.CONTROL_PKT_RESET);
+                    this.statusCallback(sd_rpc_app_status_t.RESET_PERFORMED, "Target Reset performed");
+                    exit.resetSent = true;
+                    return;
+                }
+
+                if (!exit.isFullfilled()){
+                    this.currentState =  h5_state.STATE_FAILED;
+                    dispatchEvent(this.stateChangedEvent);
+                    return;
+                }
+                else{
+                    this.currentState =  h5_state.STATE_UNINITIALIZED;
+                    dispatchEvent(this.stateChangedEvent);
+                    return;
+                }
+            }.bind(this), RESET_WAIT_DURATION);
         }.bind(this);
 
+        // State uninitialized
         this.stateActions[h5_state.STATE_UNINITIALIZED] = function(){
+            const exit = this.exitCriterias[h5_state.STATE_UNINITIALIZED];
+            exit.reset();
+            let syncRetransmission = PACKET_RETRANSMISSIONS;
 
+            this.stateUpdateCallback = setInterval(function(){
+                if(!exit.isFullfilled() && syncRetransmission > 0){
+                    this.sendControlPacket(control_pkt_type.CONTROL_PKT_SYNC);
+                    exit.syncSent = true;
+                    syncRetransmission -= 1;
+                    return;
+                }
+
+                if (exit.isFullfilled()){
+                    this.currentState =  h5_state.STATE_INITIALIZED;
+                    dispatchEvent(this.stateChangedEvent);
+                    return;
+                }
+                else{
+                    this.currentState =  h5_state.STATE_FAILED;
+                    dispatchEvent(this.stateChangedEvent);
+                    return;
+                }
+            }.bind(this), NON_ACTIVE_STATE_TIMEOUT);
         }.bind(this);
 
+        // State initialized
         this.stateActions[h5_state.STATE_INITIALIZED] = function(){
+            const exit = this.exitCriterias[h5_state.STATE_INITIALIZED];
+            exit.reset();
+            let syncRetransmission = PACKET_RETRANSMISSIONS;
 
+            this.stateUpdateCallback = setInterval(function(){
+                if(!exit.isFullfilled() && syncRetransmission > 0){
+                    this.sendControlPacket(control_pkt_type.CONTROL_PKT_SYNC_CONFIG);
+                    exit.syncConfigSent = true;
+                    syncRetransmission -= 1;
+                    return;
+                }
+
+                if (exit.syncConfigSent && exit.syncConfigRspReceived){
+                    this.currentState =  h5_state.STATE_ACTIVE;
+                    dispatchEvent(this.stateChangedEvent);
+                    return;
+                }
+                else{
+                    this.currentState =  h5_state.STATE_FAILED;
+                    dispatchEvent(this.stateChangedEvent);
+                    return;
+                }
+            }.bind(this), NON_ACTIVE_STATE_TIMEOUT);
         }.bind(this);
 
+        // State active
         this.stateActions[h5_state.STATE_ACTIVE] = function(){
+            this.seqNum = 0;
+            this.ackNum = 0;
+            const exit = this.exitCriterias[h5_state.STATE_ACTIVE];
+            exit.reset();
 
+            statusHandler(sd_rpc_app_status_t.CONNECTION_ACTIVE, "Connection active");
+
+            this.stateUpdateCallback = setInterval(function(){
+                if(!exit.isFullfilled()){
+                    return;
+                }
+
+                if (exit.syncReceived || exit.irrecoverableSyncError){
+                    this.currentState =  h5_state.STATE_RESET;
+                    dispatchEvent(this.stateChangedEvent);
+                    return;
+                }
+                else if(exit.close){
+                    this.currentState =  h5_state.STATE_START;
+                    dispatchEvent(this.stateChangedEvent);
+                    return;
+                }
+                else if(exit.ioResourceError){
+                    this.currentState =  h5_state.STATE_FAILED;
+                    dispatchEvent(this.stateChangedEvent);
+                    return;
+                }
+                else{
+                    this.currentState =  h5_state.STATE_FAILED;
+                    dispatchEvent(this.stateChangedEvent);
+                    return;
+                }
+            }.bind(this), 100);
         }.bind(this);
 
         this.stateActions[h5_state.STATE_FAILED] = function(){
-
+            this.log("Giving up! I can not provide you a way of your failed state!");
+            return;
         }.bind(this);
 
-        this.exitCriterias[h5_state.STATE_START] = new ExitCriterias.StartExitCriterias();
-        this.exitCriterias[h5_state.STATE_RESET] = new ExitCriterias.ResetExitCriterias();
-        this.exitCriterias[h5_state.STATE_UNINITIALIZED] = new ExitCriterias.UninitializedExitCriterias();
-        this.exitCriterias[h5_state.STATE_INITIALIZED] = new ExitCriterias.InitializedExitCriterias();
-        this.exitCriterias[h5_state.STATE_ACTIVE] = new ExitCriterias.ActiveExitCriterias();
+        this.exitCriterias[h5_state.STATE_START] = new StartExitCriterias();
+        this.exitCriterias[h5_state.STATE_RESET] = new ResetExitCriterias();
+        this.exitCriterias[h5_state.STATE_UNINITIALIZED] = new UninitializedExitCriterias();
+        this.exitCriterias[h5_state.STATE_INITIALIZED] = new InitializedExitCriterias();
+        this.exitCriterias[h5_state.STATE_ACTIVE] = new ActiveExitCriterias();
 
     }
     startStateMachine(){
-
+        addEventListener('stateChanged', this.boundStateMachineWorker);
     }
     stopStateMachine(){
-
+        removeEventListener('stateChanged',  this.boundStateMachineWorker);
     }
 
     stateMachineWorker(){
-        
-    }
+        console.log("state machine worker")
+        console.log(this.currentState)
+        if(this.currentState === h5_state.STATE_FAILED || this.runStateMachine === false){
+            //exit
+        }
+        /*
+            Transition to new state
+        */
+        if(this.currentState !== this.prevState){
+            console.log("New state..")
+            if(this.stateUpdateCallback !== null){
+                clearInterval(this.stateUpdateCallback);
+            }
+            this.prevState = this.currentState;
+            this.stateActions[this.currentState]();
 
+        }
+
+    }
 }
-module.exports = H5Transport;
+
+
+const syncFirstByte = 0x01;
+const syncSecondByte = 0x7E;
+const syncRspFirstByte = 0x02;
+const syncRspSecondByte = 0x7D;
+const syncConfigFirstByte = 0x03;
+const syncConfigSecondByte = 0xFC;
+const syncConfigRspFirstByte = 0x04;
+const syncConfigRspSecondByte = 0x7B;
+const syncConfigField = 0x11;
+
+const pkt_pattern = {};
+pkt_pattern[control_pkt_type.CONTROL_PKT_RESET] = new Uint8Array([]);
+pkt_pattern[control_pkt_type.CONTROL_PKT_SYNC] = new Uint8Array([syncFirstByte, syncSecondByte]);
+pkt_pattern[control_pkt_type.CONTROL_PKT_SYNC_RESPONSE] = new Uint8Array([syncRspFirstByte, syncRspSecondByte]);
+pkt_pattern[control_pkt_type.CONTROL_PKT_SYNC_CONFIG] = new Uint8Array([syncConfigFirstByte, syncConfigSecondByte, syncConfigField]);
+pkt_pattern[control_pkt_type.CONTROL_PKT_SYNC_CONFIG_RESPONSE] = new Uint8Array([syncConfigRspFirstByte, syncConfigRspSecondByte, syncConfigField]);
+
+
+
+//module.exports = H5Transport;
