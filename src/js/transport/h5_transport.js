@@ -14,7 +14,8 @@ const h5_state = Object.freeze({
 
 const NON_ACTIVE_STATE_TIMEOUT = 250;
 const PACKET_RETRANSMISSIONS = 6;
-const OPEN_WAIT_TIMEOUT = 2000;   // Duration to wait for state ACTIVE after open is called
+//const OPEN_WAIT_TIMEOUT = 2000;   // Duration to wait for state ACTIVE after open is called
+const OPEN_WAIT_TIMEOUT = 5000;   // Duration to wait for state ACTIVE after open is called
 const RESET_WAIT_DURATION = 300;
 
 class H5Transport extends Transport{
@@ -67,8 +68,8 @@ class H5Transport extends Transport{
             return errorCode;
         }
 
-        errorCode = await this.nextTransportLayer.open(status_callback, data_callback, log_callback);
-
+        errorCode = await this.nextTransportLayer.open(this.statusHandler.bind(this), this.dataHandler.bind(this), log_callback);
+        console.log("Opened!")
         if (errorCode != NRF_SUCCESS){
             _exitCriterias.ioResourceError = true;
             return NRF_ERROR_INTERNAL;
@@ -93,14 +94,55 @@ class H5Transport extends Transport{
     }
 
     dataHandler(data, length){
+        //console.log("Data handler!");
+        
+        //console.log(length)
+        //console.log(data)
+
+
+        let packet = [];
+        if(this.unprocessedData.length != 0){
+            packet.push.apply(packet, this.unprocessedData);
+        }
+
+        for(let i = 0; i < length; i++){
+            packet.push(data[i]);
+
+            if(data[i] == 0xC0){
+                if(this.c0Found){
+                    // End of packet c0Found
+
+                    // If we have two 0xC0 after another we assume it is the beginning of a new packet, and not the end
+                    if(packet.length == 2){
+                        packet.length = 0;
+                        packet.push(0xC0);
+                        continue;
+                    }
+
+                    this.processPacket(new Uint8Array(packet)); // make uint8?
+                    packet.length = 0;
+                    this.unprocessedData.length = 0;
+                    this.c0Found = false;
+                } else {
+                    this.c0Found = true;
+                    packet.length = 0;
+                    packet.push(0xC0);
+                }
+            }
+        }
+
+        if(packet.length > 0){
+            this.unprocessedData.length = 0;
+            this.unprocessedData.push.apply(this.unprocessedData, packet);
+        }
 
     }
 
     statusHandler(code, error){
-
+        //this.statusCallback
     }
     processPacket(packet){
-
+        console.log("Processing!")
     }
 
     waitForState(state, timeoutMs){
@@ -113,7 +155,7 @@ class H5Transport extends Transport{
             }.bind(this);
 
             let stateChangedFunc = function() {
-                if (this.currentState === target){
+                if (this.currentState === state){
                     removeEventListener('stateChanged', stateChangedFunc);
                     clearTimeout(timeoutFunc);
                     console.log("resolved");
@@ -207,6 +249,7 @@ class H5Transport extends Transport{
             exit.reset();
 
             this.stateUpdateCallback = setInterval(function(){
+                console.log("Update..")
                 if(!exit.isFullfilled()){
                     return;
                 }
@@ -362,6 +405,7 @@ class H5Transport extends Transport{
     }
     startStateMachine(){
         addEventListener('stateChanged', this.boundStateMachineWorker);
+        dispatchEvent(this.stateChangedEvent);
     }
     stopStateMachine(){
         removeEventListener('stateChanged',  this.boundStateMachineWorker);
