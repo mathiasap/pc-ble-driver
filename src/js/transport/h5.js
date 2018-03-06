@@ -31,6 +31,7 @@ const packetTypeMask = 0x0F;
 const payloadLengthFirstNibbleMask = 0x000F;
 const payloadLengthSecondNibbleMask = 0x0FF0;
 const payloadLengthOffset = 4;
+const H5_HEADER_LENGTH = 4;
 
 function calculate_header_checksum(header)
 {
@@ -43,11 +44,11 @@ function calculate_header_checksum(header)
     return checksum & 0xff;
 }
 
-function calculate_crc16_checksum(out_packet)
+function calculate_crc16_checksum(out_packet, len)
 {
     let crc = 0xFFFF;
 
-    for(let i = 0; i < out_packet.length; i++){
+    for(let i = 0; i < len === 'undefined'? out_packet.length : len; i++){
         const data = out_packet[i];
         crc = (crc >> 8) | (crc << 8);
         crc ^= data;
@@ -93,4 +94,51 @@ function h5_encode(in_packet, out_packet, seq_num, ack_num, crc_present, reliabl
     if (crc_present){
         add_crc16(out_packet);
     }
+}
+
+function h5_decode(slipPayload, h5Payload, ref, _data_integrity, _payload_length, _header_checksum){
+    // Needs testing!
+    if(slipPayload.length < 4){
+        return NRF_ERROR_INVALID_DATA;
+    }
+
+    ref.seq_num = slipPayload[0] & seqNumMask;
+    ref.ack_num = (slipPayload[0] >> ackNumPos) & ackNumMask;
+    let crc_present = (!!((slipPayload[0] >> crcPresentPos) & crcPresentMask) !== 0);
+    ref.reliable_packet = (!!((slipPayload[0] >> reliablePacketPos) & reliablePacketMask) !== 0);
+    ref.packet_type = slipPayload[1] & packetTypeMask;
+
+    let payload_length = ((slipPayload[1] >> payloadLengthOffset) & payloadLengthFirstNibbleMask) + (slipPayload[2] << payloadLengthOffset);
+    let header_checksum = slipPayload[3];
+
+    let calculatedPayloadSize = payload_length + H5_HEADER_LENGTH + (crc_present ? 2 : 0);
+
+    if(slipPayload.length != calculatedPayloadSize){
+        return NRF_ERROR_INVALID_DATA;
+    }
+
+    // must be fixed to take in ref
+    if (_payload_length !== null) _payload_length = payload_length;
+    if (_data_integrity !== null) _data_integrity = crc_present;
+    if (_header_checksum !== null) _header_checksum = header_checksum;
+
+    let calculated_header_checksum = calculate_header_checksum(slipPayload);
+
+    if (header_checksum !== calculated_header_checksum){
+        return NRF_ERROR_INVALID_DATA;
+    }
+
+    if (crc_present){
+        let packet_checksum = slipPayload[payload_length + H5_HEADER_LENGTH] + (slipPayload[payload_length + H5_HEADER_LENGTH + 1] << 8);
+        let calculated_packet_checksum = calculate_crc16_checksum(slipPayload, payload_length + H5_HEADER_LENGTH);
+
+        if (packet_checksum !== calculated_packet_checksum){
+            return NRF_ERROR_INVALID_DATA;
+        }
+    }
+
+    if(payload_length > 0){
+        h5Payload.push.apply(h5Payload, slipPayload.slice(4 , 4 + payload_length));
+    }
+    return NRF_SUCCESS;
 }

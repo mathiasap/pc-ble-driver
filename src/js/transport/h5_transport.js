@@ -95,7 +95,7 @@ class H5Transport extends Transport{
 
     dataHandler(data, length){
         //console.log("Data handler!");
-        
+
         //console.log(length)
         //console.log(data)
 
@@ -142,7 +142,32 @@ class H5Transport extends Transport{
         //this.statusCallback
     }
     processPacket(packet){
-        console.log("Processing!")
+
+        let ref = {seq_num = null, ack_num = null, reliable_packet = null, packet_type = null};
+
+        let slipPayload = [];
+        let err_code = slip_decode(packet, slipPayload);
+
+        if(err_code != NRF_SUCCESS){
+            errorPacketCount++;
+            return;
+        }
+
+        this.logPacket(false, slipPayload);
+
+        let h5Payload = [];
+
+        err_code = h5_decode(slipPayload, h5Payload, ref, null, null, null);
+
+        if(erro_code !== NRF_SUCCESS){
+            this.errorPacketCount++;
+            return;
+        }
+
+        if(this.currentState === h5_state.STATE_RESET){
+            //dispatchEvent
+        }
+
     }
 
     waitForState(state, timeoutMs){
