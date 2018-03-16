@@ -12,12 +12,16 @@ function dataCallback(data, length){
 }
 
 async function openAdapter(){
-    let webusb = new WebusbInterface();
-    let h5 = new H5Transport(webusb, 5000);
+    const webusb = new WebusbInterface();
+    const h5 = new H5Transport(webusb, 5000);
+    const serialization = new SerializationTransport(h5, 5000);
+
+
     console.log("opening");
-    let res = await h5.open(statusCallback, dataCallback, logCallback)
+    let res = await serialization.open(statusCallback, dataCallback, logCallback)
     console.log("Back to interface");
     console.log(res)
+
 
 }
 //openAdapter();
