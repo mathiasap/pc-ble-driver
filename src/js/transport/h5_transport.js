@@ -83,8 +83,7 @@ class H5Transport extends Transport{
         else {
             return NRF_ERROR_TIMEOUT;
         }
-    //});
-}
+    }
 
     close(){
 
@@ -143,15 +142,15 @@ class H5Transport extends Transport{
     }
     processPacket(packet){
 
-        let ref = {seq_num = null, ack_num = null, reliable_packet = null, packet_type = null};
+        let ref = {seq_num : null, ack_num : null, reliable_packet : null, packet_type : null};
 
         let slipPayload = [];
         let err_code = slip_decode(packet, slipPayload);
-
         if(err_code != NRF_SUCCESS){
             errorPacketCount++;
             return;
         }
+        slipPayload = new Uint8Array(slipPayload);
 
         this.logPacket(false, slipPayload);
 
@@ -159,36 +158,126 @@ class H5Transport extends Transport{
 
         err_code = h5_decode(slipPayload, h5Payload, ref, null, null, null);
 
-        if(erro_code !== NRF_SUCCESS){
+        if(err_code !== NRF_SUCCESS){
             this.errorPacketCount++;
             return;
         }
+        h5Payload = new Uint8Array(h5Payload);
 
         if(this.currentState === h5_state.STATE_RESET){
             //dispatchEvent
+        }
+
+        if(ref.packet_type === h5_pkt_type_t.LINK_CONTROL_PACKET){
+            let isSyncPacket = h5Payload[0] === syncFirstByte && h5Payload[1] === syncSecondByte;
+            let isSyncResponsePacket = h5Payload[0] === syncRspFirstByte && h5Payload[1] === syncRspSecondByte;
+            let isSyncConfigPacket = h5Payload[0] === syncConfigFirstByte && h5Payload[1] === syncConfigSecondByte;
+            let isSyncConfigResponsePacket = h5Payload[0] === syncConfigRspFirstByte && h5Payload[1] === syncConfigRspSecondByte;
+
+            if(this.currentState === h5_state.STATE_UNINITIALIZED){
+                if (isSyncResponsePacket) {
+                    this.exitCriterias[this.currentState].syncRspReceived = true;
+                    //dispatchEvent
+                }
+
+                if (isSyncPacket) {
+                    this.sendControlPacket(control_pkt_type.CONTROL_PKT_SYNC_RESPONSE);
+                }
+            }
+            else if(this.currentState === h5_state.STATE_INITIALIZED){
+                const exit = this.exitCriterias[this.currentState];
+
+                if (isSyncConfigResponsePacket) {
+                    exit.syncConfigRspReceived = true;
+                    //dispatchEvent
+                }
+
+                if (isSyncConfigPacket)
+                {
+                    this.sendControlPacket(control_pkt_type.CONTROL_PKT_SYNC_CONFIG_RESPONSE);
+                    //dispatchEvent
+                }
+
+                if (isSyncPacket)
+                {
+                    this.sendControlPacket(control_pkt_type.CONTROL_PKT_SYNC_RESPONSE);
+                    //dispatchEvent
+                }
+
+            }
+            else if(this.currentState === h5_state.STATE_ACTIVE){
+                const exit = this.exitCriterias[this.currentState];
+                if (isSyncPacket)
+                {
+                    exit.syncReceived = true;
+                    //dispatchEvent
+                }
+
+                if (isSyncConfigPacket)
+                {
+                    this.sendControlPacket(control_pkt_type.CONTROL_PKT_SYNC_CONFIG_RESPONSE);
+                }
+
+            }
+        }
+        else if(ref.packet_type === h5_pkt_type_t.VENDOR_SPECIFIC_PACKET){
+            if (this.currentState == h5_state.STATE_ACTIVE)
+            {
+                if (reliable_packet)
+                {
+                    if (this.seq_num == this.ackNum)
+                    {
+                        this.incrementAckNum();
+                        this.sendControlPacket(control_pkt_type.CONTROL_PKT_ACK);
+                        this.dataCallback(h5Payload, h5Payload.length);
+                    }
+                    else
+                    {
+                        sendControlPacket(control_pkt_type.CONTROL_PKT_ACK);
+                    }
+                }
+            }
+        }
+        else if(ref.packet_type === h5_pkt_type_t.ACK_PACKET){
+            if (this.ack_num === ((this.seqNum + 1) & 0x07))
+            {
+                // Received a packet with valid ack_num, inform threads that wait the command is received on the other end
+                this.incrementSeqNum();
+                //ackwait condition
+            }
+            else if (ack_num === seqNum)
+            {
+                // Discard packet, we assume that we have received a reply from a previous packet
+            }
+            else
+            {
+                this.exitCriterias[this.currentState].irrecoverableSyncError = true;
+                //dispatchEvent
+            }
         }
 
     }
 
     waitForState(state, timeoutMs){
         return new Promise(resolve => {
+            let timeout;
             let timeoutFunc = function() {
                 removeEventListener('stateChanged', stateChangedFunc);
-                console.log("not resolved");
-                resolve(false);
-
+                if (this.currentState !== state) {
+                    console.log("not resolved");
+                    resolve(false);
+                }
             }.bind(this);
 
             let stateChangedFunc = function() {
                 if (this.currentState === state){
                     removeEventListener('stateChanged', stateChangedFunc);
-                    clearTimeout(timeoutFunc);
                     console.log("resolved");
                     resolve(true);
                 }
             }.bind(this);
 
-            let timeout = setTimeout(timeoutFunc, timeoutMs);
+            timeout = setTimeout(timeoutFunc, timeoutMs);
             addEventListener('stateChanged', stateChangedFunc);
             console.log("wait for state promise..")
         });
@@ -228,10 +317,12 @@ class H5Transport extends Transport{
     }
 
     incrementSeqNum(){
-
+        this.seqNum++;
+        this.seqNum = this.seqNum & 0x07;
     }
     incrementAckNum(){
-
+        this.ackNum++;
+        this.ackNum = this.ackNum & 0x07;
     }
 
     log(message){
@@ -270,6 +361,7 @@ class H5Transport extends Transport{
 
         // State Start
         this.stateActions[h5_state.STATE_START] = function(){
+            console.log("Entered start state");
             const exit = this.exitCriterias[h5_state.STATE_START];
             exit.reset();
 
@@ -301,6 +393,7 @@ class H5Transport extends Transport{
 
         // State reset
         this.stateActions[h5_state.STATE_RESET] = function(){
+            console.log("Entered reset state");
             const exit = this.exitCriterias[h5_state.STATE_RESET];
             exit.reset();
 
@@ -327,6 +420,7 @@ class H5Transport extends Transport{
 
         // State uninitialized
         this.stateActions[h5_state.STATE_UNINITIALIZED] = function(){
+            console.log("Entered uninitialized state");
             const exit = this.exitCriterias[h5_state.STATE_UNINITIALIZED];
             exit.reset();
             let syncRetransmission = PACKET_RETRANSMISSIONS;
@@ -354,6 +448,7 @@ class H5Transport extends Transport{
 
         // State initialized
         this.stateActions[h5_state.STATE_INITIALIZED] = function(){
+            console.log("Entered initialized state");
             const exit = this.exitCriterias[h5_state.STATE_INITIALIZED];
             exit.reset();
             let syncRetransmission = PACKET_RETRANSMISSIONS;
@@ -381,14 +476,16 @@ class H5Transport extends Transport{
 
         // State active
         this.stateActions[h5_state.STATE_ACTIVE] = function(){
+            console.log("Entered active state");
             this.seqNum = 0;
             this.ackNum = 0;
             const exit = this.exitCriterias[h5_state.STATE_ACTIVE];
             exit.reset();
 
-            statusHandler(sd_rpc_app_status_t.CONNECTION_ACTIVE, "Connection active");
+            this.statusHandler(sd_rpc_app_status_t.CONNECTION_ACTIVE, "Connection active");
 
             this.stateUpdateCallback = setInterval(function(){
+                console.log("active update")
                 if(!exit.isFullfilled()){
                     return;
                 }

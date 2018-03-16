@@ -99,13 +99,14 @@ function h5_encode(in_packet, out_packet, seq_num, ack_num, crc_present, reliabl
 function h5_decode(slipPayload, h5Payload, ref, _data_integrity, _payload_length, _header_checksum){
     // Needs testing!
     if(slipPayload.length < 4){
+        console.log('H5 decode error 1');
         return NRF_ERROR_INVALID_DATA;
     }
 
     ref.seq_num = slipPayload[0] & seqNumMask;
     ref.ack_num = (slipPayload[0] >> ackNumPos) & ackNumMask;
-    let crc_present = (!!((slipPayload[0] >> crcPresentPos) & crcPresentMask) !== 0);
-    ref.reliable_packet = (!!((slipPayload[0] >> reliablePacketPos) & reliablePacketMask) !== 0);
+    let crc_present = !!(((slipPayload[0] >> crcPresentPos) & crcPresentMask) !== 0);
+    ref.reliable_packet = !!(((slipPayload[0] >> reliablePacketPos) & reliablePacketMask) !== 0);
     ref.packet_type = slipPayload[1] & packetTypeMask;
 
     let payload_length = ((slipPayload[1] >> payloadLengthOffset) & payloadLengthFirstNibbleMask) + (slipPayload[2] << payloadLengthOffset);
