@@ -26,13 +26,15 @@ class AdapterInternal {
     }
 
     open(status_callback, event_callback, log_callback) {
-        this.eventCallback = event_callback;
+        /*this.eventCallback = event_callback;
         this.statusCallback = status_callback;
-        this.logCallback = log_callback;
+        this.logCallback = log_callback;*/
 
-        boundStatusHandler = this.statusHandler.bind(this);
-        boundEventHandler = this.eventHandler.bind(this);
-        boundLogHandler = this.logHandler.bind(this);
+        
+
+        let boundStatusHandler = this.statusHandler.bind(this);
+        let boundEventHandler = this.eventHandler.bind(this);
+        let boundLogHandler = this.logHandler.bind(this);
 
         return this.transport.open(boundStatusHandler, boundEventHandler, boundLogHandler);
     }
