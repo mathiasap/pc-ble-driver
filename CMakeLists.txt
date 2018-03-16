@@ -6,8 +6,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-long-long -pedantic")
 file(GLOB LIB_BASE_C_SRC_FILES "src/common/*.c")
 file(GLOB LIB_BASE_CPP_SRC_FILES "src/common/*.cpp")
 
-file(GLOB LIB_TRANSPORT_C_SRC_FILES "src/common/transport/*.c")
-file(GLOB LIB_TRANSPORT_CPP_SRC_FILES "src/common/transport/*.cpp")
+file(GLOB LIB_TRANSPORT_C_SRC_FILES "src/common/transport_interface/*.c")
+file(GLOB LIB_TRANSPORT_CPP_SRC_FILES "src/common/transport_interface/*.cpp")
 
 
 
@@ -39,6 +39,7 @@ add_definitions(
     -DSD_RPC_EXPORTS
     -DHCI_LINK_CONTROL # Adds support for Link Control packets according to the HCI standard
 )
+set(ASSERTIONS 2)
 
 
 
@@ -61,7 +62,7 @@ include_directories(
         include/common
         include/common/sdk_compat
         include/common/internal
-        include/common/internal/transport
+        include/common/internal/transport_interface
 )
 
 # Set per-SD API version include directories and compiler definitions
