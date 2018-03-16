@@ -1,6 +1,8 @@
 const NRF_SUCCESS = 0;
 const NRF_ERROR_INTERNAL = 3;
 const NRF_ERROR_TIMEOUT = 13;
+const NRF_ERROR_INVALID_DATA = 11;
+
 
 
 class AdapterInternal {
