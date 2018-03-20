@@ -4,8 +4,9 @@
 
 class WebusbInterface extends Transport{
 
-    constructor(){
+    constructor(self){
         super();
+        this.self = self;
         this.device = null;
     }
     open(status_callback, data_callback, log_callback){

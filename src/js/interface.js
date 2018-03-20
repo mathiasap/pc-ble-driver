@@ -22,8 +22,15 @@ async function openAdapter(){
     //console.log("Back to interface");
     //console.log(res)
     console.log("Attempting to open adapter")
-    let res = Module.ccall('emscriptenOpenAdapter', 'number', [], []);
+    //let res = Module.ccall('emscriptenOpenAdapter', 'number', [], []);
+
+    let res = Module.ccall('heartRateOpenAdapter', 'void', [], []);
     console.log(res)
+    setTimeout(() =>{
+    Module.ccall('heartRateExample', 'number', [], []);
+},7000);
+    //res = Module.ccall('heartRateExample', 'number', [], []);
+
     console.log("Open adapter attempt done")
 
 

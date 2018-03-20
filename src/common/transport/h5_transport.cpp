@@ -169,7 +169,6 @@ uint32_t H5Transport::open(status_cb_t status_callback, data_cb_t data_callback,
     }
     else
     {
-        return currentState + 13;
         return NRF_ERROR_TIMEOUT;
     }
 }
@@ -253,9 +252,14 @@ uint32_t H5Transport::send(std::vector<uint8_t> &data)
 }
 #pragma endregion Public methods
 
+
+#include <emscripten.h>
+
+
 #pragma region Processing incoming data from UART
 void H5Transport::processPacket(std::vector<uint8_t> &packet)
 {
+    emscripten_run_script("console.log('process packet!')");
     uint8_t seq_num;
     uint8_t ack_num;
     bool reliable_packet;
@@ -412,6 +416,7 @@ void H5Transport::statusHandler(sd_rpc_app_status_t code, const char * error)
 
 void H5Transport::dataHandler(uint8_t *data, size_t length)
 {
+    emscripten_run_script("alert('h5 datahandler!')");
     std::vector<uint8_t> packet;
 
     // Check if we have any data from before that has not been processed.

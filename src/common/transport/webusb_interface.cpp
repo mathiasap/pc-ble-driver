@@ -62,10 +62,30 @@ uint32_t WebusbInterface::open(status_cb_t status_callback, data_cb_t data_callb
 	 return NRF_SUCCESS;
 }
 
+#include <sstream>
+#include <cstring>
 
+template<typename T>
+const char *createEmscriptenDebugText(T t)
+{
+    std::ostringstream stream;
+    stream << t;
+    return stream.str().c_str();
+}
+
+template<typename T, typename ...U>
+const char *createEmscriptenDebugText(T t, U... u)
+{
+    std::ostringstream stream;
+    stream << t << createEmscriptenDebugText(u...);
+    return stream.str().c_str();
+}
 
 uint32_t WebusbInterface::dataReceived(uint8_t *data, size_t length)
 {
+	//emscripten_run_script("alert('data received!')");
+	//emscripten_run_script(createEmscriptenDebugText("console.log('Data received: ",data[0],"')"));
+
 	dataCallback(data,length);
 
 	std::vector<uint8_t> sendvec;

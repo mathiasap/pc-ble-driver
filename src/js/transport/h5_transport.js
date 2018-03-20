@@ -19,8 +19,9 @@ const OPEN_WAIT_TIMEOUT = 5000;   // Duration to wait for state ACTIVE after ope
 const RESET_WAIT_DURATION = 300;
 
 class H5Transport extends Transport{
-    constructor(nextTransportLayer, retransmission_interval){
+    constructor(self, nextTransportLayer, retransmission_interval){
         super();
+        this.self = self;
         this.seqNum = 0;
         this.ackNum = 0;
         this.c0Found = false;
@@ -366,7 +367,7 @@ class H5Transport extends Transport{
             exit.reset();
 
             this.stateUpdateCallback = setInterval(function(){
-                console.log("Update..")
+                //console.log("Update..")
                 if(!exit.isFullfilled()){
                     return;
                 }
@@ -485,7 +486,7 @@ class H5Transport extends Transport{
             this.statusHandler(sd_rpc_app_status_t.CONNECTION_ACTIVE, "Connection active");
 
             this.stateUpdateCallback = setInterval(function(){
-                console.log("active update")
+                //console.log("active update")
                 if(!exit.isFullfilled()){
                     return;
                 }

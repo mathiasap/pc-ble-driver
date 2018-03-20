@@ -18,6 +18,7 @@
  * https://www.bluetooth.com/specifications/gatt/viewer?attributeXmlFile=org.bluetooth.service.heart_rate.xml
  */
 
+
 #include "ble.h"
 #include "sd_rpc.h"
 
@@ -290,6 +291,8 @@ static uint32_t ble_stack_init()
 
     return err_code;
 }
+
+
 
 #if NRF_SD_BLE_API >= 5
 uint32_t ble_cfg_set(uint8_t conn_cfg_tag)
@@ -584,83 +587,97 @@ static uint32_t heart_rate_measurement_send()
 
     return NRF_SUCCESS;
 }
-
+#include <emscripten.h>
 /**@brief Function for application main entry.
  *
  * @param[in]   argc    Number of arguments (program expects 0 or 1 arguments).
  * @param[in]   argv    The serial port and baud rate of the target nRF5 device (Optional).
  */
-int main(int argc, char * argv[])
-{
-    uint32_t error_code;
-    uint8_t  cccd_value = 0;
-
-
-
-    m_adapter =  adapter_init();
-    sd_rpc_log_handler_severity_filter_set(m_adapter, SD_RPC_LOG_INFO);
-    error_code = sd_rpc_open(m_adapter, status_handler, ble_evt_dispatch, log_handler);
-
-    if (error_code != NRF_SUCCESS)
+ 	EMSCRIPTEN_KEEPALIVE
+    void heartRateOpenAdapter()
     {
-        printf("Failed to open nRF BLE Driver. Error code: 0x%02X\n", error_code);
-        fflush(stdout);
-        return error_code;
+        uint32_t error_code;
+        m_adapter =  adapter_init();
+        sd_rpc_log_handler_severity_filter_set(m_adapter, SD_RPC_LOG_INFO);
+        error_code = sd_rpc_open(m_adapter, status_handler, ble_evt_dispatch, log_handler);
+        
     }
 
-#if NRF_SD_BLE_API >= 5
-    ble_cfg_set(m_config_id);
-#endif
-
-    error_code = ble_stack_init();
-
-    if (error_code != NRF_SUCCESS)
+ 	EMSCRIPTEN_KEEPALIVE
+    int heartRateExample()
     {
-        return error_code;
-    }
+        uint32_t error_code;
+        uint8_t  cccd_value = 0;
 
-    error_code = advertisement_data_set();
 
-    if (error_code != NRF_SUCCESS)
-    {
-        return error_code;
-    }
-
-    error_code = services_init();
-
-    if (error_code != NRF_SUCCESS)
-    {
-        return error_code;
-    }
-
-    error_code = advertising_start();
-
-    if (error_code != NRF_SUCCESS)
-    {
-        return error_code;
-    }
-
-    while (!m_advertisement_timed_out)
-    {
-        if (m_connection_handle != BLE_CONN_HANDLE_INVALID && m_send_notifications)
+/*
+        m_adapter =  adapter_init();
+        sd_rpc_log_handler_severity_filter_set(m_adapter, SD_RPC_LOG_INFO);
+        error_code = sd_rpc_open(m_adapter, status_handler, ble_evt_dispatch, log_handler);
+        EM_ASM({
+            console.log("Waiting..");
+        });
+        if (error_code != NRF_SUCCESS)
         {
-            heart_rate_measurement_send();
+            printf("Failed to open nRF BLE Driver. Error code: 0x%02X\n", error_code);
+            fflush(stdout);
+            return error_code;
+        }
+        */
+
+    #if NRF_SD_BLE_API >= 5
+        ble_cfg_set(m_config_id);
+    #endif
+
+        error_code = ble_stack_init();
+
+        if (error_code != NRF_SUCCESS)
+        {
+            return error_code;
         }
 
-        Sleep(1000);
-    }
+        error_code = advertisement_data_set();
 
-    error_code = sd_rpc_close(m_adapter);
+        if (error_code != NRF_SUCCESS)
+        {
+            return error_code;
+        }
 
-    if (error_code != NRF_SUCCESS)
-    {
-        printf("Failed to close nRF BLE Driver. Error code: 0x%02X\n", error_code);
+        error_code = services_init();
+
+        if (error_code != NRF_SUCCESS)
+        {
+            return error_code;
+        }
+
+        error_code = advertising_start();
+
+        if (error_code != NRF_SUCCESS)
+        {
+            return error_code;
+        }
+
+        while (!m_advertisement_timed_out)
+        {
+            if (m_connection_handle != BLE_CONN_HANDLE_INVALID && m_send_notifications)
+            {
+                heart_rate_measurement_send();
+            }
+
+            Sleep(1000);
+        }
+
+        error_code = sd_rpc_close(m_adapter);
+
+        if (error_code != NRF_SUCCESS)
+        {
+            printf("Failed to close nRF BLE Driver. Error code: 0x%02X\n", error_code);
+            fflush(stdout);
+            return error_code;
+        }
+
+        printf("Closed\n");
         fflush(stdout);
-        return error_code;
+
+        return NRF_SUCCESS;
     }
-
-    printf("Closed\n");
-    fflush(stdout);
-
-    return NRF_SUCCESS;
-}

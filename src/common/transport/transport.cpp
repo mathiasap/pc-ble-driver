@@ -52,9 +52,10 @@ Transport::~Transport()
 {
     /* Intentional empty */
 }
-
+#include <emscripten.h>
 uint32_t Transport::open(status_cb_t status_callback, data_cb_t data_callback, log_cb_t log_callback)
 {
+    emscripten_run_script("console.log('setting callbacks!')");
     statusCallback = status_callback;
     dataCallback = data_callback;
     logCallback = log_callback;

@@ -6,7 +6,8 @@ const NRF_ERROR_INVALID_DATA = 11;
 
 
 class AdapterInternal {
-    constructor(serializationTransport) {
+    constructor(self, serializationTransport) {
+        this.self = self;
         this.eventCallback = null;
         this.statusCallback = null;
         this.logCallback = null;
@@ -15,28 +16,29 @@ class AdapterInternal {
     }
 
     statusHandler(code, message){
-        statusCallback(this, code, message);
+        ccall('adapterStatusHandler', 'void', ['number', 'number', 'string'], [this.self, code, message]);
     }
     eventHandler(event){
-        eventCallback(this, event);
+        let data = Uint8Array.from(event);
+        buffer = Module._malloc(data.length)
+        Module.HEAPU8.set(data, buffer);
+        ccall('adapterEventHandler', 'void', ['number', 'number', 'number'], [this.self, buffer, data.length]);
+        _free(buffer);
     }
     logHandler(severity, log_message){
         // If severity greater than
-        logCallback(this, severity, log_message);
+        ccall('adapterLogHandler', 'void', ['number', 'number', 'string'], [this.self, severity, log_message]);
     }
 
-    open(status_callback, event_callback, log_callback) {
-        /*this.eventCallback = event_callback;
-        this.statusCallback = status_callback;
-        this.logCallback = log_callback;*/
-
-        
+    async open(/*status_callback, event_callback, log_callback*/) {
 
         let boundStatusHandler = this.statusHandler.bind(this);
         let boundEventHandler = this.eventHandler.bind(this);
         let boundLogHandler = this.logHandler.bind(this);
-
-        return this.transport.open(boundStatusHandler, boundEventHandler, boundLogHandler);
+        console.log("Adapter before")
+        let res = await this.transport.open(boundStatusHandler, boundEventHandler, boundLogHandler);
+        console.log("Adapter after")
+        return res;
     }
     isInternalError(error_code){
         if(error_code !== NRF_SUCCESS){

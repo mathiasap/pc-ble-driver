@@ -7,7 +7,8 @@ const serialization_pkt_type_t = Object.freeze({
 
 class SerializationTransport {
 
-    constructor(dataLinkLayer, response_timeout){
+    constructor(self, dataLinkLayer, response_timeout){
+        this.self = self;
         this.statusCallback = null;
         this.eventCallback = null;
         this.logCallback = null;
@@ -27,7 +28,10 @@ class SerializationTransport {
         this.statusCallback = status_callback;
         this.eventCallback = event_callback;
         this.logCallback = log_callback;
+
+        console.log("Serial before")
         let errorCode = await this.nextTransportLayer.open(this.statusCallback, this.readHandler.bind(this), this.logCallback);
+        console.log("Serial after")
         if(errorCode !== NRF_SUCCESS){
             return errorCode;
         }
@@ -46,7 +50,7 @@ class SerializationTransport {
 
     readHandler(data, length){
         let eventType = data[0];
-
+        console.log("READ HANDLER")
         if(eventType === serialization_pkt_type_t.SERIALIZATION_RESPONSE){
             this.responseBuffer.set(data.slice(1));
             this.responseLength = length-1;
@@ -68,7 +72,8 @@ class SerializationTransport {
         let eventQueuePtr = 0;
         while(eventQueuePtr < this.eventQueue.length)
         {
-            const eventData = this.eventQueue[eventQueuePtr++]; 
+            const eventData = this.eventQueue[eventQueuePtr++];
+
         }
         this.eventQueue.length = 0;
     }

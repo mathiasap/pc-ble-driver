@@ -204,10 +204,11 @@ void SerializationTransport::eventHandlingRunner()
         eventWaitCondition.wait(eventLock);
     }
 }
-
+#include <emscripten.h>
 // Read Thread
 void SerializationTransport::readHandler(uint8_t *data, size_t length)
 {
+    emscripten_run_script("alert('read handler!')");
     auto eventType = static_cast<serialization_pkt_type_t>(data[0]);
     data += 1;
     length -= 1;
