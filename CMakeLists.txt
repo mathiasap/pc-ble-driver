@@ -1,14 +1,26 @@
 cmake_minimum_required(VERSION 3.3)
 
 include (cmake/pc-ble-driver.cmake)
+#set(EMTERPRETER_OPT "-s EMTERPRETIFY=1 -s EMTERPRETIFY_ASYNC=1")
+
+
+set(EMTERPRETER_OPT "--memory-init-file 0 -s TOTAL_MEMORY=67108864 -s ABORTING_MALLOC=0 -s EMTERPRETIFY=1 -s EMTERPRETIFY_ASYNC=1 -s NO_EXIT_RUNTIME=1 -s EMTERPRETIFY_BLACKLIST=\"[]\"")
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${EMTERPRETER_OPT}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-long-long -pedantic")
+add_definitions(-s ASYNCIFY=1)
+add_definitions(-s EMTERPRETIFY=1)
+add_definitions(-s EMTERPRETIFY_ASYNC=1)
+add_definitions(-s DEMANGLE_SUPPORT=1)
+
+
+
 # Common source files
 file(GLOB LIB_BASE_C_SRC_FILES "src/common/*.c")
 file(GLOB LIB_BASE_CPP_SRC_FILES "src/common/*.cpp")
 
 file(GLOB LIB_TRANSPORT_C_SRC_FILES "src/common/transport_interface/*.c")
 file(GLOB LIB_TRANSPORT_CPP_SRC_FILES "src/common/transport_interface/*.cpp")
-
 
 
 
@@ -83,6 +95,10 @@ foreach(SD_API_VER ${SD_API_VERS})
     # Provide the NRF_SD_BLE_API_VERSION macro to each variant
     string(REGEX MATCH "[0-9]+$" _SD_API_VER_NUM "${SD_API_VER}")
     set(SD_API_VER_COMPILER_DEF_NUM "-D${SD_API_VER_COMPILER_DEF}=${_SD_API_VER_NUM}")
-    target_compile_definitions(${PC_BLE_DRIVER_${SD_API_VER}_OBJ_LIB} PRIVATE "${SD_API_VER_COMPILER_DEF_NUM}")
+    target_compile_definitions(${PC_BLE_DRIVER_${SD_API_VER}_OBJ_LIB} PRIVATE "${SD_API_VER_COMPILER_DEF_NUM}" NRF_SD_BLE_API=${SD_API_VER})
     target_compile_options(${PC_BLE_DRIVER_${SD_API_VER}_OBJ_LIB} PRIVATE "--bind")
+    
+    
+    
+    
 endforeach(SD_API_VER)

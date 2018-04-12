@@ -14,6 +14,7 @@ SET(ARCH not_set CACHE STRING "Architecture (x86_32 or x86_64)")
 string(TOLOWER "${ARCH}" ARCH)
 
 # Add or remove SD API versions here
+#set(SD_API_VER_NUMS 2 5)
 set(SD_API_VER_NUMS 2 5)
 list(LENGTH SD_API_VER_NUMS SD_API_VER_COUNT)
 
