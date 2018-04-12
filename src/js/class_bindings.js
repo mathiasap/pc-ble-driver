@@ -1,4 +1,4 @@
-let binding_store = {};
+var binding_store = {};
 
 
 
