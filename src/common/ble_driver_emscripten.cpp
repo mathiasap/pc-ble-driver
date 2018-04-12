@@ -13,7 +13,6 @@ extern "C" {
     ble_enable_params_t * createBleParams()
     {
         ble_enable_params_t* ble_enable_params = new ble_enable_params_t;
-
         #if NRF_SD_BLE_API == 3
             ble_enable_params->gatt_enable_params.att_mtu = GATT_MTU_SIZE_DEFAULT;
         #elif NRF_SD_BLE_API < 3

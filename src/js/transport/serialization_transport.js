@@ -56,7 +56,7 @@ class SerializationTransport {
         let arr = Module.intArrayFromString(strArr,true);
         console.log(arr)
         Module._free(cmdBuffer);
-        arr = [0x60]
+
 
         commandBuffer.push.apply(commandBuffer, arr);
         commandBuffer = new Uint8Array(commandBuffer);

@@ -35,12 +35,12 @@ endforeach(SD_API_VER)
 foreach(SD_API_VER ${SD_API_VERS})
     set(LIB_${SD_API_VER}_C_SRC_FILES ${LIB_BASE_C_SRC_FILES}
                         ${LIB_SDK_${SD_API_VER}_C_SRC_FILES}
-                        ${LIB_TRANSPORT_C_SRC_FILES}
+                        #${LIB_TRANSPORT_C_SRC_FILES}
     )
 
     set(LIB_${SD_API_VER}_CPP_SRC_FILES ${LIB_BASE_CPP_SRC_FILES}
                           ${LIB_SDK_${SD_API_VER}_CPP_SRC_FILES}
-                          ${LIB_TRANSPORT_CPP_SRC_FILES}
+                          #${LIB_TRANSPORT_CPP_SRC_FILES}
     )
 endforeach(SD_API_VER)
 
@@ -95,7 +95,8 @@ foreach(SD_API_VER ${SD_API_VERS})
     # Provide the NRF_SD_BLE_API_VERSION macro to each variant
     string(REGEX MATCH "[0-9]+$" _SD_API_VER_NUM "${SD_API_VER}")
     set(SD_API_VER_COMPILER_DEF_NUM "-D${SD_API_VER_COMPILER_DEF}=${_SD_API_VER_NUM}")
-    target_compile_definitions(${PC_BLE_DRIVER_${SD_API_VER}_OBJ_LIB} PRIVATE "${SD_API_VER_COMPILER_DEF_NUM}" NRF_SD_BLE_API=${SD_API_VER})
+    #${SD_API_VER}
+    target_compile_definitions(${PC_BLE_DRIVER_${SD_API_VER}_OBJ_LIB} PRIVATE "${SD_API_VER_COMPILER_DEF_NUM}" NRF_SD_BLE_API=3)
     target_compile_options(${PC_BLE_DRIVER_${SD_API_VER}_OBJ_LIB} PRIVATE "--bind")
     
     

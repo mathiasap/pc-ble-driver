@@ -3,6 +3,8 @@ if(PC_BLE_DRIVER_CMAKE_INCLUDED)
     return()
 endif(PC_BLE_DRIVER_CMAKE_INCLUDED)
 set(PC_BLE_DRIVER_CMAKE_INCLUDED true)
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
   
 math(EXPR COMPILER_ARCH_BITS "8*${CMAKE_SIZEOF_VOID_P}")
 # Default to compiler architecture
@@ -11,51 +13,9 @@ set(ARCH_BITS ${COMPILER_ARCH_BITS})
 SET(ARCH not_set CACHE STRING "Architecture (x86_32 or x86_64)")
 string(TOLOWER "${ARCH}" ARCH)
 
-if(${ARCH} STREQUAL not_set)
-    message(STATUS "Architecture not set, using native ${ARCH_BITS}-bit toolchain.")
-else()
-    if(MSVC)
-        message(FATAL_ERROR "ARCH not available with MSVC. Use  -G \"Visual Studio XX <Win64>\" instead.")
-    elseif(APPLE)
-        message(FATAL_ERROR "ARCH not available on macOS / OS X. Universal 32 and 64-bit binaries will be built.")
-    endif()
-    if(${ARCH} STREQUAL x86_32)
-        set(ARCH_BITS 32)
-    elseif(${ARCH} STREQUAL x86_64)
-        set(ARCH_BITS 64)
-    else()
-        message(FATAL_ERROR "Invalid architecture: ARCH=${ARCH}.")
-    endif()
-    message(STATUS "Building ${ARCH_BITS}-bit targets with ${COMPILER_ARCH_BITS}-bit toolchain.")
-endif()
-
-if(NOT MSVC)
-    message(STATUS "Building with build type: ${CMAKE_BUILD_TYPE}.")
-endif()
-
-# Compiler specific
-if(MSVC)
-    include(${CMAKE_CURRENT_LIST_DIR}/msvc.cmake)
-elseif(APPLE)
-    include(${CMAKE_CURRENT_LIST_DIR}/apple.cmake)
-else()
-    # Linux
-    include(${CMAKE_CURRENT_LIST_DIR}/gcc.cmake)
-endif()
-
-# Use multithreaded Boost libraries
-set(Boost_USE_MULTITHREADED ON)
-
-# Use static boost libraries so the dynamic library 
-# can run anywhere
-set(Boost_USE_STATIC_LIBS   ON)
-
-# Find the necessary boost components on the system.
-# Minimum version required is 1.54.0
-find_package ( Boost 1.54.0 REQUIRED COMPONENTS thread system regex date_time chrono )
-
 # Add or remove SD API versions here
-set(SD_API_VER_NUMS 2 3)
+#set(SD_API_VER_NUMS 2 5)
+set(SD_API_VER_NUMS 3)
 list(LENGTH SD_API_VER_NUMS SD_API_VER_COUNT)
 
 set(SD_API_VER_PREFIX "SD_API_V")
@@ -71,15 +31,9 @@ foreach(SD_API_VER_NUM ${SD_API_VER_NUMS})
     set(PC_BLE_DRIVER_${_SD_API_VER}_PROJECT_NAME "pc_ble_driver_${_SD_API_VER_L}")
     set(PC_BLE_DRIVER_${_SD_API_VER}_OBJ_LIB "pc_ble_driver_obj_${_SD_API_VER_L}")
     set(PC_BLE_DRIVER_${_SD_API_VER}_STATIC_LIB "pc_ble_driver_static_${_SD_API_VER_L}")
-    set(PC_BLE_DRIVER_${_SD_API_VER}_SHARED_LIB "pc_ble_driver_shared_${_SD_API_VER_L}")
 endforeach(SD_API_VER_NUM)
 
 set(SD_API_VER_COMPILER_DEF "NRF_SD_BLE_API_VERSION")
-
-#MESSAGE( STATUS "list1: " "${SD_API_VER_NUMS}" )
-#MESSAGE( STATUS "list2: " "${SD_API_VERS}" )
-#MESSAGE( STATUS "proj2: " "${PC_BLE_DRIVER_SD_API_V2_PROJECT_NAME}" )
-#MESSAGE( STATUS "proj3: " "${PC_BLE_DRIVER_SD_API_V3_PROJECT_NAME}" )
 
 # pc-ble-driver root folder
 set(PC_BLE_DRIVER_ROOT_DIR ${CMAKE_CURRENT_LIST_DIR}/..)
@@ -149,8 +103,6 @@ function(build_metadata dir dst)
     string(CONCAT str ${str} "* C Compiler: " "${CMAKE_C_COMPILER_ID} (${ARCH_BITS}-bit)" "\n") 
     string(CONCAT str ${str} "* C++ Compiler: " "${CMAKE_CXX_COMPILER_ID} (${ARCH_BITS}-bit)" "\n") 
     string(CONCAT str ${str} "* CMake version: " ${CMAKE_VERSION} "\n") 
-    string(CONCAT str ${str} "* Boost version: " ${Boost_MAJOR_VERSION} "." ${Boost_MINOR_VERSION} "." ${Boost_SUBMINOR_VERSION} "\n") 
-    string(CONCAT str ${str} "* Boost libs: " ${Boost_LIBRARY_DIRS} "\n") 
     string(CONCAT str ${str} "* SD API Versions:") 
     foreach(SD_API_VER ${SD_API_VERS})
         string(CONCAT str ${str} " <${SD_API_VER}>") 
@@ -159,5 +111,4 @@ function(build_metadata dir dst)
      
     set(${dst} ${str} PARENT_SCOPE)
  
-
 endfunction()

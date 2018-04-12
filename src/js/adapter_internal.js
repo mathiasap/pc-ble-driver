@@ -16,18 +16,18 @@ class AdapterInternal {
     }
 
     statusHandler(code, message){
-        ccall('adapterStatusHandler', 'void', ['number', 'number', 'string'], [this.self, code, message]);
+        //ccall('adapterStatusHandler', 'void', ['number', 'number', 'string'], [this.self, code, message]);
     }
     eventHandler(event){
         var data = Uint8Array.from(event);
         buffer = Module._malloc(data.length)
         Module.HEAPU8.set(data, buffer);
-        ccall('adapterEventHandler', 'void', ['number', 'number', 'number'], [this.self, buffer, data.length]);
+        //ccall('adapterEventHandler', 'void', ['number', 'number', 'number'], [this.self, buffer, data.length]);
         _free(buffer);
     }
     logHandler(severity, log_message){
         // If severity greater than
-        ccall('adapterLogHandler', 'void', ['number', 'number', 'string'], [this.self, severity, log_message]);
+        //ccall('adapterLogHandler', 'void', ['number', 'number', 'string'], [this.self, severity, log_message]);
     }
 
     async open(/*status_callback, event_callback, log_callback*/) {
