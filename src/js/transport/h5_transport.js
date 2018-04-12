@@ -34,6 +34,8 @@ class H5Transport extends Transport{
         this.stateUpdateCallback = null;
         this.lastPacket = [];
         this.stateChangedEvent = new Event('stateChanged');
+        this.packetAckEvent = new Event('packetAckWait');
+
         this.boundStateMachineWorker = this.stateMachineWorker.bind(this)
 
         this.nextTransportLayer = nextTransportLayer;
@@ -59,8 +61,8 @@ class H5Transport extends Transport{
 
         this.startStateMachine();
 
-        let _exitCriterias = this.exitCriterias[h5_state.STATE_START];
-        let errorCode = super.open(status_callback, data_callback, log_callback);
+        var _exitCriterias = this.exitCriterias[h5_state.STATE_START];
+        var errorCode = super.open(status_callback, data_callback, log_callback);
         this.lastPacket.length = 0;
 
         if (errorCode != NRF_SUCCESS){
@@ -89,7 +91,78 @@ class H5Transport extends Transport{
     close(){
 
     }
-    send(data){
+    transmitLastPacket(encodedPacket){
+        this.lastPacket = encodedPacket;
+        let remainingRetransmissions = PACKET_RETRANSMISSIONS;
+
+        return new Promise(resolve => {
+            var timeout;
+            let seqNumBefore;
+
+            var sendNextPacket = function() {
+                this.logPacket(true, encodedPacket);
+                this.nextTransportLayer.send(this.lastPacket);
+                seqNumBefore = this.seqNum;
+            }.bind(this);
+
+            var timeoutFunc = function() {
+                if(remainingRetransmissions-- <= 0){
+                    console.log("not resolved");
+                    removeEventListener('packetAckWait', packetAckFunc);
+                    clearInterval(timeout);
+                    resolve(NRF_ERROR_TIMEOUT);
+                }
+                console.log("Retransmitting packet")
+                sendNextPacket();
+
+/*
+                if (this.currentState !== state) {
+
+                }*/
+            }.bind(this);
+
+            var packetAckFunc = function() {
+                if (seqNumBefore !== this.seqNum){
+                    removeEventListener('packetAckWait', packetAckFunc);
+                    console.log("resolved");
+                    clearInterval(timeout);
+                    resolve(NRF_SUCCESS);
+                }
+            }.bind(this);
+
+            timeout = setInterval(timeoutFunc, this.retransmission_interval);
+            addEventListener('packetAckWait', packetAckFunc);
+
+            remainingRetransmissions--;
+            sendNextPacket();
+
+        });
+
+
+        while(remainingRetransmissions--){
+
+
+
+        }
+
+    }
+    async send(data){
+        console.log("Sending from h5")
+        if(this.currentState !== h5_state.STATE_ACTIVE){
+            return NRF_ERROR_INVALID_STATE;
+        }
+
+        var h5Packet = [];
+        h5_encode(data, h5Packet, this.seqNum, this.ackNum, true, true, h5_pkt_type_t.VENDOR_SPECIFIC_PACKET);
+        console.log(h5Packet)
+
+
+        var encodedPacket = [];
+        slip_encode(new Uint8Array(h5Packet), encodedPacket);
+
+        let transmitRes = await this.transmitLastPacket(new Uint8Array(encodedPacket));
+        this.lastPacket = [];
+        return transmitRes;
 
     }
 
@@ -100,12 +173,12 @@ class H5Transport extends Transport{
         //console.log(data)
 
 
-        let packet = [];
+        var packet = [];
         if(this.unprocessedData.length != 0){
             packet.push.apply(packet, this.unprocessedData);
         }
 
-        for(let i = 0; i < length; i++){
+        for(var i = 0; i < length; i++){
             packet.push(data[i]);
 
             if(data[i] == 0xC0){
@@ -143,10 +216,10 @@ class H5Transport extends Transport{
     }
     processPacket(packet){
 
-        let ref = {seq_num : null, ack_num : null, reliable_packet : null, packet_type : null};
+        var ref = {seq_num : null, ack_num : null, reliable_packet : null, packet_type : null};
 
-        let slipPayload = [];
-        let err_code = slip_decode(packet, slipPayload);
+        var slipPayload = [];
+        var err_code = slip_decode(packet, slipPayload);
         if(err_code != NRF_SUCCESS){
             errorPacketCount++;
             return;
@@ -155,7 +228,7 @@ class H5Transport extends Transport{
 
         this.logPacket(false, slipPayload);
 
-        let h5Payload = [];
+        var h5Payload = [];
 
         err_code = h5_decode(slipPayload, h5Payload, ref, null, null, null);
 
@@ -170,10 +243,10 @@ class H5Transport extends Transport{
         }
 
         if(ref.packet_type === h5_pkt_type_t.LINK_CONTROL_PACKET){
-            let isSyncPacket = h5Payload[0] === syncFirstByte && h5Payload[1] === syncSecondByte;
-            let isSyncResponsePacket = h5Payload[0] === syncRspFirstByte && h5Payload[1] === syncRspSecondByte;
-            let isSyncConfigPacket = h5Payload[0] === syncConfigFirstByte && h5Payload[1] === syncConfigSecondByte;
-            let isSyncConfigResponsePacket = h5Payload[0] === syncConfigRspFirstByte && h5Payload[1] === syncConfigRspSecondByte;
+            var isSyncPacket = h5Payload[0] === syncFirstByte && h5Payload[1] === syncSecondByte;
+            var isSyncResponsePacket = h5Payload[0] === syncRspFirstByte && h5Payload[1] === syncRspSecondByte;
+            var isSyncConfigPacket = h5Payload[0] === syncConfigFirstByte && h5Payload[1] === syncConfigSecondByte;
+            var isSyncConfigResponsePacket = h5Payload[0] === syncConfigRspFirstByte && h5Payload[1] === syncConfigRspSecondByte;
 
             if(this.currentState === h5_state.STATE_UNINITIALIZED){
                 if (isSyncResponsePacket) {
@@ -224,9 +297,9 @@ class H5Transport extends Transport{
         else if(ref.packet_type === h5_pkt_type_t.VENDOR_SPECIFIC_PACKET){
             if (this.currentState == h5_state.STATE_ACTIVE)
             {
-                if (reliable_packet)
+                if (ref.reliable_packet)
                 {
-                    if (this.seq_num == this.ackNum)
+                    if (ref.seq_num == this.ackNum)
                     {
                         this.incrementAckNum();
                         this.sendControlPacket(control_pkt_type.CONTROL_PKT_ACK);
@@ -240,13 +313,14 @@ class H5Transport extends Transport{
             }
         }
         else if(ref.packet_type === h5_pkt_type_t.ACK_PACKET){
-            if (this.ack_num === ((this.seqNum + 1) & 0x07))
+
+            if (ref.ack_num === ((this.seqNum + 1) & 0x07))
             {
                 // Received a packet with valid ack_num, inform threads that wait the command is received on the other end
                 this.incrementSeqNum();
-                //ackwait condition
+                dispatchEvent(this.packetAckEvent);
             }
-            else if (ack_num === seqNum)
+            else if (ref.ack_num === this.seqNum)
             {
                 // Discard packet, we assume that we have received a reply from a previous packet
             }
@@ -261,8 +335,8 @@ class H5Transport extends Transport{
 
     waitForState(state, timeoutMs){
         return new Promise(resolve => {
-            let timeout;
-            let timeoutFunc = function() {
+            var timeout;
+            var timeoutFunc = function() {
                 removeEventListener('stateChanged', stateChangedFunc);
                 if (this.currentState !== state) {
                     console.log("not resolved");
@@ -270,7 +344,7 @@ class H5Transport extends Transport{
                 }
             }.bind(this);
 
-            let stateChangedFunc = function() {
+            var stateChangedFunc = function() {
                 if (this.currentState === state){
                     removeEventListener('stateChanged', stateChangedFunc);
                     console.log("resolved");
@@ -285,8 +359,7 @@ class H5Transport extends Transport{
     }
 
     sendControlPacket(type){
-        console.log("Type ", type);
-        let h5_packet;
+        var h5_packet;
 
         switch (type) {
             case control_pkt_type.CONTROL_PKT_RESET:
@@ -305,12 +378,12 @@ class H5Transport extends Transport{
                 h5_packet = h5_pkt_type_t.LINK_CONTROL_PACKET;
         }
 
-        let payload = pkt_pattern[type];
-        let h5Packet = [];
-        h5_encode(payload, h5Packet, 0, type === control_pkt_type.CONTROL_PKT_ACK ? ackNum : 0, false, false, h5_packet);
+        var payload = pkt_pattern[type];
+        var h5Packet = [];
+        h5_encode(payload, h5Packet, 0, type === control_pkt_type.CONTROL_PKT_ACK ? this.sendackNum : 0, false, false, h5_packet);
 
 
-        let slipPacket = [];
+        var slipPacket = [];
         slip_encode(new Uint8Array(h5Packet), slipPacket);
 
         this.logPacket(true, h5Packet);
@@ -340,7 +413,7 @@ class H5Transport extends Transport{
             this.incomingPacketCount++;
         }
 
-        let logLine = this.h5PktToString(outgoing, packet);
+        var logLine = this.h5PktToString(outgoing, packet);
 
         if (this.logCallback !== undefined)
         {
@@ -424,7 +497,7 @@ class H5Transport extends Transport{
             console.log("Entered uninitialized state");
             const exit = this.exitCriterias[h5_state.STATE_UNINITIALIZED];
             exit.reset();
-            let syncRetransmission = PACKET_RETRANSMISSIONS;
+            var syncRetransmission = PACKET_RETRANSMISSIONS;
 
             this.stateUpdateCallback = setInterval(function(){
                 if(!exit.isFullfilled() && syncRetransmission > 0){
@@ -452,7 +525,7 @@ class H5Transport extends Transport{
             console.log("Entered initialized state");
             const exit = this.exitCriterias[h5_state.STATE_INITIALIZED];
             exit.reset();
-            let syncRetransmission = PACKET_RETRANSMISSIONS;
+            var syncRetransmission = PACKET_RETRANSMISSIONS;
 
             this.stateUpdateCallback = setInterval(function(){
                 if(!exit.isFullfilled() && syncRetransmission > 0){

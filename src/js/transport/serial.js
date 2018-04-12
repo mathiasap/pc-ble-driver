@@ -30,7 +30,7 @@ var serial = {};
   };
 
   serial.Port.prototype.connect = function() {
-    let readLoop = () => {
+    var readLoop = () => {
       this.device_.transferIn(3, 512).then(result => {
         this.onReceive(result.data);
         readLoop();

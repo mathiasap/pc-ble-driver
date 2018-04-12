@@ -29,9 +29,7 @@ class SerializationTransport {
         this.eventCallback = event_callback;
         this.logCallback = log_callback;
 
-        console.log("Serial before")
-        let errorCode = await this.nextTransportLayer.open(this.statusCallback, this.readHandler.bind(this), this.logCallback);
-        console.log("Serial after")
+        var errorCode = await this.nextTransportLayer.open(this.statusCallback, this.readHandler.bind(this), this.logCallback);
         if(errorCode !== NRF_SUCCESS){
             return errorCode;
         }
@@ -44,12 +42,33 @@ class SerializationTransport {
     close(){
 
     }
-    send(cmdBuffer, cmdLength, rspBuffer, rspLength){
+    async send(cmdBuffer, cmdLength, rspBuffer, rspLength){
+        this.rspReceived = false;
+        this.responseBuffer = rspBuffer;
+        this.responseLength = rspLength;
+
+        let commandBuffer = [serialization_pkt_type_t.SERIALIZATION_COMMAND];
+        let commandLength = Module.getValue(cmdLength, "i32")
+        console.log("Command length "+commandLength)
+        let strArr =  Module.Pointer_stringify(cmdBuffer, (commandLength));
+        let arr = Module.intArrayFromString(strArr,false);
+        console.log(arr)
+        Module._free(cmdBuffer);
+
+
+        commandBuffer.push.apply(commandBuffer, arr);
+        //commandBuffer = [0x0, 0x60, 0x01, 0x0A, 0x00, 0x00, 0x01, 0x07, 0x01, 0x00, 0xF7, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+        commandBuffer = new Uint8Array(commandBuffer);
+
+        let errCode = await this.nextTransportLayer.send(commandBuffer);
+
+
+
 
     }
 
     readHandler(data, length){
-        let eventType = data[0];
+        var eventType = data[0];
         console.log("READ HANDLER")
         if(eventType === serialization_pkt_type_t.SERIALIZATION_RESPONSE){
             this.responseBuffer.set(data.slice(1));
@@ -58,7 +77,7 @@ class SerializationTransport {
             //response wait notify one
         }
         else if(eventType === serialization_pkt_type_t.SERIALIZATION_EVENT){
-            let eventData = new Uint8Array(length-1);
+            var eventData = new Uint8Array(length-1);
             this.eventQueue.push(eventData);
             //notify one
         }
@@ -69,7 +88,7 @@ class SerializationTransport {
     }
 
     eventHandlingRunner(){
-        let eventQueuePtr = 0;
+        var eventQueuePtr = 0;
         while(eventQueuePtr < this.eventQueue.length)
         {
             const eventData = this.eventQueue[eventQueuePtr++];

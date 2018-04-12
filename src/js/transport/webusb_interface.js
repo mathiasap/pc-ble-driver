@@ -14,7 +14,7 @@ class WebusbInterface extends Transport{
 
 
 
-        //let device;
+        //var device;
         return new Promise(resolve => {
 
             serial.requestPort().then(selectedPort => {
@@ -62,6 +62,7 @@ class WebusbInterface extends Transport{
     send(data){
         //console.log("sending data..")
         //console.log(data);
+        console.log(data)
         if(!this.port) {
             return;
         }
