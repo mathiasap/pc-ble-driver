@@ -17,7 +17,7 @@ extern "C" {
 	EMSCRIPTEN_KEEPALIVE
     void adapterStatusHandler(AdapterInternal* instance, sd_rpc_app_status_t code, const char * message)
     {
-        
+
         instance->statusHandler(code, message);
     }
 }
@@ -129,7 +129,7 @@ uint32_t AdapterInternal::open(/*const sd_rpc_status_handler_t status_callback, 
     auto boundEventHandler = std::bind(&AdapterInternal::eventHandler, this, std::placeholders::_1);
     auto boundLogHandler = std::bind(&AdapterInternal::logHandler, this, std::placeholders::_1, std::placeholders::_2);
     //return transport->open(boundStatusHandler, boundEventHandler, boundLogHandler);
-
+//emscripten_sleep(10000);
     int retval = EM_ASM_INT({
 
         var res = AdapterInternalBinding.get($0).open();
@@ -141,7 +141,7 @@ uint32_t AdapterInternal::open(/*const sd_rpc_status_handler_t status_callback, 
         console.log("Openy done..");
         console.log($0);
     },retval);
-emscripten_sleep_with_yield(10);
+
     //std::unique_lock<std::mutex> syncGuard(openMutex);
     //openWaitCondition.wait(syncGuard);
 //openWaitCondition.wait(syncGuard);

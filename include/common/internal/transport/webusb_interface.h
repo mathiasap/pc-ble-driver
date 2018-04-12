@@ -39,6 +39,8 @@
 #define WEBUSB_INTERFACE_H
 
 #include "transport.h"
+#include <emscripten.h>
+#include <emscripten/bind.h>
 
 class WebusbInterface : public Transport
 {
@@ -51,16 +53,30 @@ public:
 
 
     uint32_t open(status_cb_t status_callback, data_cb_t data_callback, log_cb_t log_callback);
-   // uint32_t open();
-
-
     uint32_t close();
-
     uint32_t send(std::vector<uint8_t> &data);
 	uint32_t dataReceived(uint8_t *data, uint32_t length);
 
 };
+/*
+using namespace emscripten;
 
+class WebusbInterfaceWrapper : public emscripten::wrapper<WebusbInterface> 
+{
+    EMSCRIPTEN_WRAPPER(WebusbInterfaceWrapper);
+    uint32_t open(status_cb_t status_callback, data_cb_t data_callback, log_cb_t log_callback)
+    {
+        return call<uint32_t>("open", status_callback, data_callback, log_callback);
+    }
+};
+
+
+EMSCRIPTEN_BINDINGS(WebusbInterface) {
+    emscripten::class_<WebusbInterface>("WebusbInterface")
+        .function("open", &WebusbInterface::open, emscripten::pure_virtual())
+        .allow_subclass<WebusbInterfaceWrapper>("WebusbInterfaceWrapper")
+        ;
+}*/
 
 /*
 extern WebusbInterface* currentInterface;
