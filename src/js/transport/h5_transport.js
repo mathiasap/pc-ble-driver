@@ -243,6 +243,7 @@ class H5Transport extends Transport{
         }
 
         if(ref.packet_type === h5_pkt_type_t.LINK_CONTROL_PACKET){
+            console.log("Got link packet")
             var isSyncPacket = h5Payload[0] === syncFirstByte && h5Payload[1] === syncSecondByte;
             var isSyncResponsePacket = h5Payload[0] === syncRspFirstByte && h5Payload[1] === syncRspSecondByte;
             var isSyncConfigPacket = h5Payload[0] === syncConfigFirstByte && h5Payload[1] === syncConfigSecondByte;
@@ -307,13 +308,13 @@ class H5Transport extends Transport{
                     }
                     else
                     {
-                        sendControlPacket(control_pkt_type.CONTROL_PKT_ACK);
+                        this.sendControlPacket(control_pkt_type.CONTROL_PKT_ACK);
                     }
                 }
             }
         }
         else if(ref.packet_type === h5_pkt_type_t.ACK_PACKET){
-
+            console.log("Got ack packet")
             if (ref.ack_num === ((this.seqNum + 1) & 0x07))
             {
                 // Received a packet with valid ack_num, inform threads that wait the command is received on the other end
@@ -377,10 +378,10 @@ class H5Transport extends Transport{
             default:
                 h5_packet = h5_pkt_type_t.LINK_CONTROL_PACKET;
         }
-
+        console.log("Control packet type "+type)
         var payload = pkt_pattern[type];
         var h5Packet = [];
-        h5_encode(payload, h5Packet, 0, type === control_pkt_type.CONTROL_PKT_ACK ? this.sendackNum : 0, false, false, h5_packet);
+        h5_encode(payload, h5Packet, 0, type === control_pkt_type.CONTROL_PKT_ACK ? this.ackNum : 0, false, false, h5_packet);
 
 
         var slipPacket = [];
@@ -642,6 +643,7 @@ const syncConfigField = 0x11;
 
 const pkt_pattern = {};
 pkt_pattern[control_pkt_type.CONTROL_PKT_RESET] = new Uint8Array([]);
+pkt_pattern[control_pkt_type.CONTROL_PKT_ACK] = new Uint8Array([]);
 pkt_pattern[control_pkt_type.CONTROL_PKT_SYNC] = new Uint8Array([syncFirstByte, syncSecondByte]);
 pkt_pattern[control_pkt_type.CONTROL_PKT_SYNC_RESPONSE] = new Uint8Array([syncRspFirstByte, syncRspSecondByte]);
 pkt_pattern[control_pkt_type.CONTROL_PKT_SYNC_CONFIG] = new Uint8Array([syncConfigFirstByte, syncConfigSecondByte, syncConfigField]);

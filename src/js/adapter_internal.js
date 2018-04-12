@@ -19,7 +19,7 @@ class AdapterInternal {
         ccall('adapterStatusHandler', 'void', ['number', 'number', 'string'], [this.self, code, message]);
     }
     eventHandler(event){
-        let data = Uint8Array.from(event);
+        var data = Uint8Array.from(event);
         buffer = Module._malloc(data.length)
         Module.HEAPU8.set(data, buffer);
         ccall('adapterEventHandler', 'void', ['number', 'number', 'number'], [this.self, buffer, data.length]);
@@ -32,11 +32,11 @@ class AdapterInternal {
 
     async open(/*status_callback, event_callback, log_callback*/) {
 
-        let boundStatusHandler = this.statusHandler.bind(this);
-        let boundEventHandler = this.eventHandler.bind(this);
-        let boundLogHandler = this.logHandler.bind(this);
+        var boundStatusHandler = this.statusHandler.bind(this);
+        var boundEventHandler = this.eventHandler.bind(this);
+        var boundLogHandler = this.logHandler.bind(this);
         console.log("Adapter before")
-        let res = await this.transport.open(boundStatusHandler, boundEventHandler, boundLogHandler);
+        var res = await this.transport.open(boundStatusHandler, boundEventHandler, boundLogHandler);
         console.log("Adapter after")
         return res;
     }

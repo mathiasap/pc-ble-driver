@@ -12,26 +12,35 @@ function dataCallback(data, length){
 }
 
 async function openAdapter(){
-    //const webusb = new WebusbInterface();
-    //const h5 = new H5Transport(webusb, 5000);
-    //const serialization = new SerializationTransport(h5, 5000);
+    const webusb = new WebusbInterface(null);
+    const h5 = new H5Transport(null, webusb, 5000);
+    const serialization = new SerializationTransport(null, h5, 5000);
+    const adapter = new AdapterInternal(null, serialization);
+    await adapter.open();
+    console.log("Opened");
 
+    let p_params = Module.ccall('createBleParams', 'number', [], []);
+    //let p_params = null;
+    await sd_ble_enable(adapter, p_params, null);
+    console.log("Done")
+    Module._free(p_params);
 
     //console.log("opening");
-    //let res = await serialization.open(statusCallback, dataCallback, logCallback)
+    //var res = await serialization.open(statusCallback, dataCallback, logCallback)
     //console.log("Back to interface");
     //console.log(res)
-    console.log("Attempting to open adapter")
-    //let res = Module.ccall('emscriptenOpenAdapter', 'number', [], []);
+    //console.log("Attempting to open adapter")
+    //var res = Module.ccall('emscriptenOpenAdapter', 'number', [], []);
 
-    let res = Module.ccall('heartRateOpenAdapter', 'void', [], []);
-    console.log(res)
+    //await Module.ccall('heartRateOpenAdapter', '', [], [], { async: false });
+    //console.log(res)
+    /*
     setTimeout(() =>{
-    Module.ccall('heartRateExample', 'number', [], []);
-},7000);
+    Module.ccall('heartRateExample', 'number', [], [], { async: true });
+},7000);*/
     //res = Module.ccall('heartRateExample', 'number', [], []);
 
-    console.log("Open adapter attempt done")
+    //console.log("Open adapter attempt done")
 
 
 
