@@ -38,6 +38,7 @@
 #define DEFAULT_BAUD_RATE 1000000
 #endif
 
+#define BAUD_RATE 1000000 /**< The baud rate to be used for serial communication with nRF5 device. */
 
 enum
 {

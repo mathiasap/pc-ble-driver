@@ -8,7 +8,7 @@ index 86cde74..2bfb8cd 100644
   *  3.4.5.3. */
 -#define BLE_GATTC_WRITE_P_VALUE_LEN_MAX    (GATT_MTU_SIZE_DEFAULT - 3)
 +#define BLE_GATTC_WRITE_P_VALUE_LEN_MAX    (247 - 3)
- 
+
  /** See Bluetooth 4.0 spec: 3.4.4.7. */
  #define BLE_GATTC_HANDLE_COUNT_LEN_MAX     ((GATT_MTU_SIZE_DEFAULT - 1) / 2)
 diff --git a/components/serialization/common/ser_config.h b/components/serialization/common/ser_config.h
@@ -50,7 +50,7 @@ index 9eaf33a..7b4fe8e 100644
 @@ -65,10 +65,10 @@ extern "C" {
  /* UART configuration */
  #define UART_IRQ_PRIORITY                       APP_IRQ_PRIORITY_LOWEST
- 
+
 -#define SER_PHY_UART_RX                         SER_CON_RX_PIN
 -#define SER_PHY_UART_TX                         SER_CON_TX_PIN
 -#define SER_PHY_UART_CTS                        SER_CON_CTS_PIN
@@ -59,8 +59,8 @@ index 9eaf33a..7b4fe8e 100644
 +#define SER_PHY_UART_TX                         TX_PIN_NUMBER
 +#define SER_PHY_UART_CTS                        CTS_PIN_NUMBER
 +#define SER_PHY_UART_RTS                        RTS_PIN_NUMBER
- 
- 
+
+
  #ifdef __cplusplus
 diff --git a/components/serialization/common/transport/ser_phy/ser_phy_hci.c b/components/serialization/common/transport/ser_phy/ser_phy_hci.c
 index 216ed97..147d7d5 100644
@@ -80,7 +80,7 @@ index 216ed97..147d7d5 100644
  #define INVALID_PKT_TYPE             0xFFFFFFFFu                                       /**< Internal invalid packet type value. */
  #define MAX_TRANSMISSION_TIME_ms     (MAX_PACKET_SIZE_IN_BITS * BAUD_TIME_us / 1000uL) /**< Max transmission time of a single application packet over UART in units of mseconds. */
 -#define RETRANSMISSION_TIMEOUT_IN_ms (10uL * MAX_TRANSMISSION_TIME_ms)                 /**< Retransmission timeout for application packet in units of mseconds. */
-+#define RETRANSMISSION_TIMEOUT_IN_ms (50uL * MAX_TRANSMISSION_TIME_ms)                 /**< Retransmission timeout for application packet in units of mseconds. */
++#define RETRANSMISSION_TIMEOUT_IN_ms (50uL * MAX_TRANSMISSION_TIME_ms)                /**< Retransmission timeout for application packet in units of mseconds. */
 
  #ifdef  HCI_LINK_CONTROL
  #define HCI_PKT_SYNC        0x7E01u                                                    /**< Link Control Packet: type SYNC */
@@ -100,9 +100,9 @@ index 5252a19..cd73f30 100644
 --- a/components/serialization/connectivity/ser_conn_error_handling.c
 +++ b/components/serialization/connectivity/ser_conn_error_handling.c
 @@ -101,7 +101,7 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info)
- 
+
          /* ble_debug_assert_handler(error_code, line_num, p_file_name); */
- 
+
 -#if 0
 +#if 1
          /* Reset the chip. Should be used in the release version. */
@@ -139,13 +139,13 @@ index bcb67e3..516ccd7 100644
  #include "boards.h"
  #include "nrf_drv_clock.h"
 +#include "ser_config.h"
- 
+
  #include "nrf_log.h"
  #include "nrf_log_ctrl.h"
 @@ -65,6 +66,38 @@ NRF_LOG_MODULE_REGISTER();
- 
+
  #include "ser_phy_debug_comm.h"
- 
+
 +#if defined ( __CC_ARM )
 +typedef struct __attribute__((packed))
 +{
@@ -167,9 +167,9 @@ index bcb67e3..516ccd7 100644
 +    .struct_version     = 2,
 +    .rfu0               = 0xFFFFFF,
 +    .revision_hash      = 0,
-+    .version_major      = 2,
-+    .version_minor      = 0,
-+    .version_patch      = 1,
++    .version_major      = 1,
++    .version_minor      = 2,
++    .version_patch      = 2,
 +    .rfu1               = 0xFF,
 +    .sd_ble_api_version = NRF_SD_BLE_API_VERSION,
 +    .transport_type     = 1,
@@ -207,5 +207,5 @@ index db96bf9..08e5b25 100644
 -  RAM (rwx) :  ORIGIN = 0x2000b668, LENGTH = 0x4998
 +  RAM (rwx) :  ORIGIN = 0x2000bcc0, LENGTH = 0x4340
  }
- 
+
  SECTIONS

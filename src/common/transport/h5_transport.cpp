@@ -133,13 +133,13 @@ uint32_t H5Transport::open(status_cb_t status_callback, data_cb_t data_callback,
         log("Not able to open, current state is not valid");
         return NRF_ERROR_INTERNAL;
     }
-    
+
     startStateMachine();
-    
+
     auto _exitCriterias = dynamic_cast<StartExitCriterias*>(exitCriterias[STATE_START]);
-    
+
     auto errorCode = Transport::open(status_callback, data_callback, log_callback);
-    
+
     lastPacket.clear();
 
     if (errorCode != NRF_SUCCESS)
@@ -151,7 +151,7 @@ uint32_t H5Transport::open(status_cb_t status_callback, data_cb_t data_callback,
 
     status_callback = std::bind(&H5Transport::statusHandler, this, std::placeholders::_1, std::placeholders::_2);
     data_callback = std::bind(&H5Transport::dataHandler, this, std::placeholders::_1, std::placeholders::_2);
-    
+
     errorCode = nextTransportLayer->open(status_callback, data_callback, log_callback);
 
     if (errorCode != NRF_SUCCESS)
@@ -176,7 +176,7 @@ uint32_t H5Transport::open(status_cb_t status_callback, data_cb_t data_callback,
 uint32_t H5Transport::close()
 {
     auto exitCriteria = exitCriterias[currentState];
-    
+
     if (exitCriteria != nullptr)
     {
         exitCriteria->close = true;
@@ -279,7 +279,7 @@ void H5Transport::processPacket(std::vector<uint8_t> &packet)
     std::vector<uint8_t> h5Payload;
 
     err_code = h5_decode(
-        slipPayload, 
+        slipPayload,
         h5Payload,
         &seq_num,
         &ack_num,
@@ -407,7 +407,7 @@ void H5Transport::statusHandler(sd_rpc_app_status_t code, const char * error)
         {
             exitCriteria->ioResourceError = true;
         }
-        
+
         syncWaitCondition.notify_all();
     }
 
@@ -822,7 +822,7 @@ std::string H5Transport::h5PktToString(bool out, std::vector<uint8_t> &h5Packet)
     uint8_t header_checksum;
 
     auto err_code = h5_decode(
-        h5Packet, 
+        h5Packet,
         payload,
         &seq_num,
         &ack_num,
