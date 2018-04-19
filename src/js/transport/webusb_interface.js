@@ -56,12 +56,10 @@ class WebusbInterface extends Transport{
 
 
         data = new Uint8Array(data.buffer);
-        //console.log(data.getUint8(0));
         this.dataCallback(data,data.length);
     }
     send(data){
-        //console.log("sending data..")
-        //console.log(data);
+        console.log("Webusb sending data.. ")
         console.log(data)
         if(!this.port) {
             return;

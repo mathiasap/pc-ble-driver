@@ -11,6 +11,56 @@ function dataCallback(data, length){
 
 }
 
+async function advertisementDataSet(adapter){
+
+    let p_index = Module._malloc(1);
+    Module.setValue(p_index, 0, "i8");
+    let dataBuffer = Module.ccall('createAdvData', 'number', ['number'], [p_index]);
+    let index = Module.getValue(p_index, "i8");
+    Module._free(p_index);
+    console.log("INDEX LENGTH "+index)
+
+    let apiRes = await sd_ble_gap_adv_data_set(adapter, dataBuffer, index, 0, 0);
+    Module._free(dataBuffer);
+    if(apiRes === NRF_SUCCESS){
+        console.log("Successfully enabled adv!");
+        console.log(NOTEXIST);
+    }
+    else{
+        console.log("Could not enable adv.");
+        console.log(NOTEXIST);
+    }
+    return apiRes;
+
+}
+
+async function scanStart(adapter){
+    let scanParam = Module.ccall('createScanParam', 'number', [], []);
+    let apiRes = await sd_ble_gap_scan_start(adapter, scanParam);
+    Module._free(scanParam);
+    if(apiRes === NRF_SUCCESS){
+        console.log("Scanning!");
+        console.log(NOTEXIST);
+    }
+    else{
+        console.log("Could not scan.");
+        console.log(NOTEXIST);
+    }
+}
+
+async function bleStackInit(adapter){
+    let p_params = Module.ccall('createBleParams', 'number', [], []);
+    let apiRes = await sd_ble_enable(adapter, p_params, null);
+    Module._free(p_params);
+    if(apiRes === NRF_SUCCESS){
+        console.log("Successfully enabled BLE!");
+    }
+    else{
+        console.log("Could not enable BLE.");
+    }
+    return apiRes;
+}
+
 async function openAdapter(){
     const webusb = new WebusbInterface(null);
     const h5 = new H5Transport(null, webusb, 5000);
@@ -18,35 +68,16 @@ async function openAdapter(){
     const adapter = new AdapterInternal(null, serialization);
     await adapter.open();
     console.log("Opened");
-
-    let p_params = Module.ccall('createBleParams', 'number', [], []);
-    //let p_params = null;
-    await sd_ble_enable(adapter, p_params, null);
-    console.log("Done")
-    Module._free(p_params);
-
-    //console.log("opening");
-    //var res = await serialization.open(statusCallback, dataCallback, logCallback)
-    //console.log("Back to interface");
-    //console.log(res)
-    //console.log("Attempting to open adapter")
-    //var res = Module.ccall('emscriptenOpenAdapter', 'number', [], []);
-
-    //await Module.ccall('heartRateOpenAdapter', '', [], [], { async: false });
-    //console.log(res)
-    /*
-    setTimeout(() =>{
-    Module.ccall('heartRateExample', 'number', [], [], { async: true });
-},7000);*/
-    //res = Module.ccall('heartRateExample', 'number', [], []);
-
-    //console.log("Open adapter attempt done")
-
-
+    return adapter;
 
 }
-//openAdapter();
+
+async function exampleProgram(){
+    let adapter = await openAdapter();
+    await bleStackInit(adapter);
+    await scanStart(adapter);
+}
 
 window.onload = function(){
-    document.querySelector("#openAdapter").onclick = openAdapter
+    document.querySelector("#exampleProgram").onclick = exampleProgram
 }

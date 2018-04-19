@@ -22,6 +22,7 @@ class SerializationTransport {
 
         this.nextTransportLayer = dataLinkLayer;
         this.responseTimeout = response_timeout;
+        addEventListener('eventDataReadyEvent', this.eventHandler.bind(this));
 
         this.eventQueue = [];
 
@@ -44,6 +45,41 @@ class SerializationTransport {
     close(){
 
     }
+
+    eventHandler(){
+
+        let eventQueuePtr = 0;
+        while(eventQueuePtr < this.eventQueue.length)
+        {
+            const eventData = this.eventQueue[eventQueuePtr++];
+            let possibleEventLength = Module._malloc(4);
+            Module.setValue(possibleEventLength, 700, "i32");
+            let event = Module._malloc(700);
+            let pEventData = Module._malloc(eventData.length);
+            Module.writeArrayToMemory(eventData, pEventData);
+            console.log(eventData.length)
+            let errCode = Module.ccall('emscripten_ble_event_dec', 'number', ['number', 'number', 'number', 'number'], [pEventData, eventData.length, event, possibleEventLength]);
+            Module._free(pEventData);
+
+            if(this.eventCallback !== null  && errCode === NRF_SUCCESS){
+
+                let eventLength = Module.getValue(possibleEventLength, "i32");
+                let arr = new Uint8Array(Module.HEAPU8.buffer.slice(event, event+eventLength));
+                this.eventCallback(arr);
+            }
+            if(errCode !== NRF_SUCCESS){
+                //log logCallback
+
+                console.log("Could not decode event")
+            }
+
+
+            Module._free(event);
+        }
+        this.eventQueue.length = 0;
+
+
+    }
     async send(cmdBuffer, cmdLength, rspBuffer, rspLength){
         this.rspReceived = false;
         this.responseBuffer = rspBuffer;
@@ -52,16 +88,23 @@ class SerializationTransport {
         let commandBuffer = [serialization_pkt_type_t.SERIALIZATION_COMMAND];
         let commandLength = Module.getValue(cmdLength, "i32")
         console.log("Command length "+commandLength)
-        let strArr =  Module.Pointer_stringify(cmdBuffer, (commandLength));
-        let arr = Module.intArrayFromString(strArr,true);
-        console.log(arr)
+        let arr = new Uint8Array(Module.HEAPU8.buffer.slice(cmdBuffer, cmdBuffer+commandLength));
+
+        console.log(arr);
         Module._free(cmdBuffer);
+
+        /*if(arr.length ===21) {
+            console.log("Changing adv data set packet..");
+            arr = new Uint8Array([
+            0x72, 0x12, 0x01, 0x0b, 0x09, 0x4e, 0x6f, 0x72,
+            0x64, 0x69, 0x63, 0x5f, 0x48, 0x52, 0x4d, 0x02, 0x01, 0x06, 0x02, 0x0a, 0xf6, 0x04,
+            0x01, 0x03, 0x03, 0x0d, 0x18]);
+        }*/
 
 
         commandBuffer.push.apply(commandBuffer, arr);
         commandBuffer = new Uint8Array(commandBuffer);
 
-        //commandBuffer = new Uint8Array([0x60/*,0x00,0x60,0x01,0x0a,0x00,0x00,0x01,0x07,0x01,0x00,0x00,0x00,0x00,0x00,0xe4*/]);
         this.didTimeout = false;
         let sendTimeoutFunc = function(){
             this.didTimeout = true;
@@ -89,8 +132,8 @@ class SerializationTransport {
         }
         var eventType = data[0];
         console.log("READ HANDLER");
+        console.log(data);
 
-        let dataReadyEvent = new CustomEvent('dataReadyEvent', {"detail": {"status":NRF_SUCCESS}});
         if(eventType === serialization_pkt_type_t.SERIALIZATION_RESPONSE){
             console.log(this.responseBuffer);
 
@@ -98,6 +141,8 @@ class SerializationTransport {
             Module.setValue(this.responseLength, length-1, "i32");
             this.rspReceived = true;
             clearTimeout(this.timeoutEvent);
+
+            let dataReadyEvent = new CustomEvent('dataReadyEvent', {"detail": {"status":NRF_SUCCESS}});
             dispatchEvent(dataReadyEvent);
 
         }
@@ -105,23 +150,15 @@ class SerializationTransport {
             var eventData = new Uint8Array(length-1);
             this.eventQueue.push(eventData);
             clearTimeout(this.timeoutEvent);
+
+            let dataReadyEvent = new CustomEvent('eventDataReadyEvent', {"detail": {"status":NRF_SUCCESS}});
             dispatchEvent(dataReadyEvent);
         }
         else {
             this.logCallback(SD_RPC_LOG_WARNING, "Unknown Nordic Semiconductor vendor specific packet received");
         }
 
+
     }
-
-    eventHandlingRunner(){
-        var eventQueuePtr = 0;
-        while(eventQueuePtr < this.eventQueue.length)
-        {
-            const eventData = this.eventQueue[eventQueuePtr++];
-
-        }
-        this.eventQueue.length = 0;
-    }
-
 
 }

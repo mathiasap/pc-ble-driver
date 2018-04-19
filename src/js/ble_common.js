@@ -1,11 +1,20 @@
 const SER_HAL_TRANSPORT_MAX_PKT_SIZE = 384;
-const PKT_ENCODE_ERROR = -1;
+/*
+const sd_rpc_app_status_t = Object.freeze({
+    PKT_SEND_MAX_RETRIES_REACHED:0,
+    PKT_UNEXPECTED:1,
+    PKT_ENCODE_ERROR:2,
+    PKT_DECODE_ERROR:3,
+    PKT_SEND_ERROR:4,
+    IO_RESOURCES_UNAVAILABLE:5,
+    RESET_PERFORMED:6,
+    CONNECTION_ACTIVE:7
+});*/
+
 
 async function encode_decode(adapter, encode_function, decode_function)
 {
-    console.log("Encode decode!")
-    //let tx_buffer_length = SER_HAL_TRANSPORT_MAX_PKT_SIZE;
-    //let rx_buffer_length = 0;
+    console.log("Encode decode!");
 
     let tx_buffer_length_uint32 = SER_HAL_TRANSPORT_MAX_PKT_SIZE;
     let rx_buffer_length_uint32 = 0;
@@ -25,12 +34,14 @@ async function encode_decode(adapter, encode_function, decode_function)
     //auto _adapter = static_cast<AdapterInternal*>(adapter->internal);
 
     let err_code = encode_function(tx_buffer, tx_buffer_length);
+
+
     console.log("Error code "+ err_code);
     if (adapter.isInternalError(err_code))
     {
         error_message += "Not able to encode packet. Code #" + err_code;
-        adapter.statusHandler(PKT_ENCODE_ERROR, error_message);
-
+        adapter.statusHandler(sd_rpc_app_status_t.PKT_ENCODE_ERROR, error_message);
+        console.log("Encode error");
         Module._free(tx_buffer);
         Module._free(tx_buffer_length);
         Module._free(rx_buffer);
@@ -64,8 +75,8 @@ async function encode_decode(adapter, encode_function, decode_function)
         //error_message << "Error sending packet to target. Code #" << err_code;
         let error_message = "Error sending packet to target. Code #" + err_code;
         console.log(error_message);
-        adapter.statusHandler(PKT_SEND_ERROR, error_message);
-
+        adapter.statusHandler(sd_rpc_app_status_t.PKT_SEND_ERROR, error_message);
+        console.log("Send error");
         Module._free(rx_buffer);
         Module._free(rx_buffer_length);
 
@@ -89,10 +100,11 @@ async function encode_decode(adapter, encode_function, decode_function)
     {
         //error_message << "Not able to decode packet. Code #" << err_code;
         let error_message = "Not able to decode packet. Code #" + err_code;
-        adapter.statusHandler(PKT_DECODE_ERROR, error_message);
+        adapter.statusHandler(sd_rpc_app_status_t.PKT_DECODE_ERROR, error_message);
+        console.log("Decode error");
         return NRF_ERROR_INTERNAL;
     }
 
-
+    console.log("The code is "+result_code_value);
     return result_code_value;
 }
