@@ -46,8 +46,7 @@ function calculate_header_checksum(header)
 
 function calculate_crc16_checksum(out_packet, len)
 {
-    let crc = new Uint16Array([0xFFFF])
-    console.log(len)
+    let crc = new Uint16Array([0xFFFF]);
     if(len===undefined)
     {
         console.log("len undefined")

@@ -57,15 +57,13 @@ class SerializationTransport {
             let event = Module._malloc(700);
             let pEventData = Module._malloc(eventData.length);
             Module.writeArrayToMemory(eventData, pEventData);
-            console.log(eventData.length)
             let errCode = Module.ccall('emscripten_ble_event_dec', 'number', ['number', 'number', 'number', 'number'], [pEventData, eventData.length, event, possibleEventLength]);
             Module._free(pEventData);
 
             if(this.eventCallback !== null  && errCode === NRF_SUCCESS){
 
                 let eventLength = Module.getValue(possibleEventLength, "i32");
-                let arr = new Uint8Array(Module.HEAPU8.buffer.slice(event, event+eventLength));
-                this.eventCallback(arr);
+                this.eventCallback(event, eventLength);
             }
             if(errCode !== NRF_SUCCESS){
                 //log logCallback
@@ -87,10 +85,10 @@ class SerializationTransport {
 
         let commandBuffer = [serialization_pkt_type_t.SERIALIZATION_COMMAND];
         let commandLength = Module.getValue(cmdLength, "i32")
-        console.log("Command length "+commandLength)
+        //console.log("Command length "+commandLength)
         let arr = new Uint8Array(Module.HEAPU8.buffer.slice(cmdBuffer, cmdBuffer+commandLength));
 
-        console.log(arr);
+        //console.log(arr);
         Module._free(cmdBuffer);
 
         /*if(arr.length ===21) {
@@ -117,7 +115,7 @@ class SerializationTransport {
 
         return new Promise( resolve =>{
             function dataRcvdResolve(evt){
-                console.log(evt.detail)
+                //console.log(evt.detail)
                 removeEventListener('dataReadyEvent', boundDataRcvdResolve);
                 resolve(evt.detail.status);
             };
@@ -131,8 +129,8 @@ class SerializationTransport {
             return;
         }
         var eventType = data[0];
-        console.log("READ HANDLER");
-        console.log(data);
+        //console.log("READ HANDLER");
+        //console.log(data);
 
         if(eventType === serialization_pkt_type_t.SERIALIZATION_RESPONSE){
             console.log(this.responseBuffer);
@@ -147,7 +145,7 @@ class SerializationTransport {
 
         }
         else if(eventType === serialization_pkt_type_t.SERIALIZATION_EVENT){
-            var eventData = new Uint8Array(length-1);
+            let eventData = new Uint8Array(data.slice(1));
             this.eventQueue.push(eventData);
             clearTimeout(this.timeoutEvent);
 

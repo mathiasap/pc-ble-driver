@@ -8,6 +8,21 @@ function logCallback(severity, length){
 
 }
 function dataCallback(data, length){
+    let arr = new Uint8Array(Module.HEAPU8.buffer.slice(data, data+length));
+    let evt_id_data = new Uint16Array(arr.slice(0,2));
+    let evt_len_data = new Uint16Array(arr.slice(2,4));
+    //console.log("event id "+evt_id_data[0])
+    //console.log("event len "+evt_len_data[0])
+    //console.log(data)
+    let advPtr = Module.ccall('getAdvName', 'number', ['number'], [data]);
+    //console.log("ADVPTR IS: "+ advPtr)
+    if(advPtr == 0){
+        //console.log("Error decoding adv name");
+    }
+    else {
+        let streng = Module.Pointer_stringify(advPtr);
+        console.log(streng)
+    }
 
 }
 
@@ -40,7 +55,7 @@ async function scanStart(adapter){
     Module._free(scanParam);
     if(apiRes === NRF_SUCCESS){
         console.log("Scanning!");
-        console.log(NOTEXIST);
+        //console.log(NOTEXIST);
     }
     else{
         console.log("Could not scan.");
@@ -66,7 +81,7 @@ async function openAdapter(){
     const h5 = new H5Transport(null, webusb, 5000);
     const serialization = new SerializationTransport(null, h5, 5000);
     const adapter = new AdapterInternal(null, serialization);
-    await adapter.open();
+    await adapter.open(statusCallback, dataCallback, logCallback);
     console.log("Opened");
     return adapter;
 

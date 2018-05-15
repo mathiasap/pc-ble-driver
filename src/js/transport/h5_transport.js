@@ -378,7 +378,7 @@ class H5Transport extends Transport{
             default:
                 h5_packet = h5_pkt_type_t.LINK_CONTROL_PACKET;
         }
-        console.log("Control packet type "+type)
+        //console.log("Control packet type "+type)
         var payload = pkt_pattern[type];
         var h5Packet = [];
         h5_encode(payload, h5Packet, 0, type === control_pkt_type.CONTROL_PKT_ACK ? this.ackNum : 0, false, false, h5_packet);
