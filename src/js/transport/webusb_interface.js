@@ -39,6 +39,7 @@ class WebusbInterface extends Transport{
         this.port.onReceive = this.dataReceived.bind(this);
         this.port.onReceiveError = error => {
             console.error(error);
+            this.statusCallback(sd_rpc_app_status_t.IO_RESOURCES_UNAVAILABLE, "Lost connection to webusb device.");
         };
         //this.send(new Uint8Array([1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,0]));
 
@@ -48,8 +49,8 @@ class WebusbInterface extends Transport{
         });
     }
 
-    close(){
-        return 0;
+    async close(){
+        return await this.port.disconnect();
     }
 
     dataReceived(data){

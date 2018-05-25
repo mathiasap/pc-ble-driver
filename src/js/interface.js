@@ -1,13 +1,13 @@
 //const WebusbInterface = require('./transport/webusb_interface');
 //const H5Transport = require('./transport/h5_transport');
 
-function statusCallback(code, message){
-
+function statusCallback(adapter, code, message){
+    console.log(code,message);
 }
-function logCallback(severity, length){
-
+function logCallback(adapter, severity, message){
+    console.log(message);
 }
-function dataCallback(data, length){
+function dataCallback(adapter, data, length){
     let arr = new Uint8Array(Module.HEAPU8.buffer.slice(data, data+length));
     let evt_id_data = new Uint16Array(arr.slice(0,2));
     let evt_len_data = new Uint16Array(arr.slice(2,4));
@@ -55,7 +55,6 @@ async function scanStart(adapter){
     Module._free(scanParam);
     if(apiRes === NRF_SUCCESS){
         console.log("Scanning!");
-        //console.log(NOTEXIST);
     }
     else{
         console.log("Could not scan.");
@@ -81,6 +80,7 @@ async function openAdapter(){
     const h5 = new H5Transport(null, webusb, 5000);
     const serialization = new SerializationTransport(null, h5, 5000);
     const adapter = new AdapterInternal(null, serialization);
+    adapter.logSeverityFilterSet(sd_rpc_log_severity_t.SD_RPC_LOG_INFO)
     await adapter.open(statusCallback, dataCallback, logCallback);
     console.log("Opened");
     return adapter;
@@ -91,6 +91,7 @@ async function exampleProgram(){
     let adapter = await openAdapter();
     await bleStackInit(adapter);
     await scanStart(adapter);
+    //await adapter.close();
 }
 
 window.onload = function(){

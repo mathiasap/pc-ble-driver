@@ -11,36 +11,31 @@ class AdapterInternal {
         this.eventCallback = null;
         this.statusCallback = null;
         this.logCallback = null;
-        //logseverityfilter
+        this.logseverityfilter = 0
         this.transport = serializationTransport;
     }
 
     statusHandler(code, message){
-        //ccall('adapterStatusHandler', 'void', ['number', 'number', 'string'], [this.self, code, message]);
     }
     eventHandler(event){
-        //let p_ble_evt = Module._malloc(event);
-        this.eventCallback(event, event.length);
-        //this.eventCallback(p_ble_evt, event.length);
-        //Module._free(p_ble_evt);
+        this.eventCallback(this, event, event.length);
     }
     logHandler(severity, log_message){
-        // If severity greater than
-        //ccall('adapterLogHandler', 'void', ['number', 'number', 'string'], [this.self, severity, log_message]);
+        if(this.logseverityfilter <= severity) {
+            this.logCallback(this, severity, log_message);
+        }
     }
 
     async open(status_callback, event_callback, log_callback) {
 
         this.eventCallback = event_callback;
         this.statusCallback = status_callback;
-        this.log_callback = log_callback;
+        this.logCallback = log_callback;
 
         var boundStatusHandler = this.statusHandler.bind(this);
         var boundEventHandler = this.eventHandler.bind(this);
         var boundLogHandler = this.logHandler.bind(this);
-        console.log("Adapter before")
         var res = await this.transport.open(boundStatusHandler, boundEventHandler, boundLogHandler);
-        console.log("Adapter after")
         return res;
     }
     isInternalError(error_code){
@@ -56,9 +51,9 @@ class AdapterInternal {
         return NRF_SUCCESS;
     }
 
-
-
-
+    async close() {
+        return await this.transport.close();
+    }
 
 
 

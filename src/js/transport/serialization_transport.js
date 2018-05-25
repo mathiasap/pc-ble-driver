@@ -22,7 +22,10 @@ class SerializationTransport {
 
         this.nextTransportLayer = dataLinkLayer;
         this.responseTimeout = response_timeout;
-        addEventListener('eventDataReadyEvent', this.eventHandler.bind(this));
+        this.boundEventHandler = this.eventHandler.bind(this);
+        this.emscripten_ble_event_dec = Module.cwrap('emscripten_ble_event_dec', 'number', ['number', 'number', 'number', 'number']);
+
+        addEventListener('eventDataReadyEvent', this.boundEventHandler);
 
         this.eventQueue = [];
 
@@ -42,8 +45,9 @@ class SerializationTransport {
         return NRF_SUCCESS;
 
     }
-    close(){
-
+    async close() {
+        removeEventListener('eventDataReadyEvent', this.boundEventHandler);
+        return await this.nextTransportLayer.close();
     }
 
     eventHandler(){
@@ -57,7 +61,7 @@ class SerializationTransport {
             let event = Module._malloc(700);
             let pEventData = Module._malloc(eventData.length);
             Module.writeArrayToMemory(eventData, pEventData);
-            let errCode = Module.ccall('emscripten_ble_event_dec', 'number', ['number', 'number', 'number', 'number'], [pEventData, eventData.length, event, possibleEventLength]);
+            let errCode = this.emscripten_ble_event_dec(pEventData, eventData.length, event, possibleEventLength);
             Module._free(pEventData);
 
             if(this.eventCallback !== null  && errCode === NRF_SUCCESS){
@@ -91,15 +95,6 @@ class SerializationTransport {
         //console.log(arr);
         Module._free(cmdBuffer);
 
-        /*if(arr.length ===21) {
-            console.log("Changing adv data set packet..");
-            arr = new Uint8Array([
-            0x72, 0x12, 0x01, 0x0b, 0x09, 0x4e, 0x6f, 0x72,
-            0x64, 0x69, 0x63, 0x5f, 0x48, 0x52, 0x4d, 0x02, 0x01, 0x06, 0x02, 0x0a, 0xf6, 0x04,
-            0x01, 0x03, 0x03, 0x0d, 0x18]);
-        }*/
-
-
         commandBuffer.push.apply(commandBuffer, arr);
         commandBuffer = new Uint8Array(commandBuffer);
 
@@ -129,12 +124,8 @@ class SerializationTransport {
             return;
         }
         var eventType = data[0];
-        //console.log("READ HANDLER");
-        //console.log(data);
 
         if(eventType === serialization_pkt_type_t.SERIALIZATION_RESPONSE){
-            console.log(this.responseBuffer);
-
             Module.writeArrayToMemory(data.slice(1), this.responseBuffer);
             Module.setValue(this.responseLength, length-1, "i32");
             this.rspReceived = true;
