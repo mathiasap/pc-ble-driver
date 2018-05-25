@@ -1,4 +1,4 @@
-var serial = {};
+let serial = {};
 
 (function() {
   'use strict';
@@ -30,7 +30,7 @@ var serial = {};
   };
 
   serial.Port.prototype.connect = function() {
-    var readLoop = () => {
+    let readLoop = () => {
       this.device_.transferIn(3, 512).then(result => {
         this.onReceive(result.data);
         readLoop();

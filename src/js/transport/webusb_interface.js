@@ -14,7 +14,7 @@ class WebusbInterface extends Transport{
 
 
 
-        //var device;
+        //let device;
         return new Promise(resolve => {
 
             serial.requestPort().then(selectedPort => {

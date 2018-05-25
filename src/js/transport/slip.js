@@ -7,7 +7,7 @@ function slip_encode(in_packet, out_packet)
 {
     out_packet.push(SLIP_END);
 
-    for (var i = 0; i < in_packet.length; i++)
+    for (let i = 0; i < in_packet.length; i++)
     {
         if (in_packet[i] === SLIP_END)
         {
@@ -31,7 +31,7 @@ function slip_encode(in_packet, out_packet)
 
 function slip_decode(packet, out_packet)
 {
-    for (var i = 0; i < packet.length; i++)
+    for (let i = 0; i < packet.length; i++)
     {
         if (packet[i] === SLIP_END)
         {

@@ -35,7 +35,7 @@ class SerializationTransport {
         this.eventCallback = event_callback;
         this.logCallback = log_callback;
 
-        var errorCode = await this.nextTransportLayer.open(this.statusCallback, this.readHandler.bind(this), this.logCallback);
+        let errorCode = await this.nextTransportLayer.open(this.statusCallback, this.readHandler.bind(this), this.logCallback);
         if(errorCode !== NRF_SUCCESS){
             return errorCode;
         }
@@ -123,7 +123,7 @@ class SerializationTransport {
         if(this.didTimeout){
             return;
         }
-        var eventType = data[0];
+        let eventType = data[0];
 
         if(eventType === serialization_pkt_type_t.SERIALIZATION_RESPONSE){
             Module.writeArrayToMemory(data.slice(1), this.responseBuffer);
