@@ -23,7 +23,6 @@ class SerializationTransport {
         this.nextTransportLayer = dataLinkLayer;
         this.responseTimeout = response_timeout;
         this.boundEventHandler = this.eventHandler.bind(this);
-        this.emscripten_ble_event_dec = Module.cwrap('emscripten_ble_event_dec', 'number', ['number', 'number', 'number', 'number']);
 
         addEventListener('eventDataReadyEvent', this.boundEventHandler);
 
@@ -61,7 +60,7 @@ class SerializationTransport {
             let event = Module._malloc(700);
             let pEventData = Module._malloc(eventData.length);
             Module.writeArrayToMemory(eventData, pEventData);
-            let errCode = this.emscripten_ble_event_dec(pEventData, eventData.length, event, possibleEventLength);
+            let errCode = emscriptenBindings.ble_event_dec(pEventData, eventData.length, event, possibleEventLength);
             Module._free(pEventData);
 
             if(this.eventCallback !== null  && errCode === NRF_SUCCESS){
