@@ -27,8 +27,8 @@ file(GLOB LIB_TRANSPORT_CPP_SRC_FILES "src/common/transport_interface/*.cpp")
 # SDK source files, different per API version
 foreach(SD_API_VER ${SD_API_VERS})
     string(TOLOWER ${SD_API_VER} SD_API_VER_L)
-    file(GLOB_RECURSE LIB_SDK_${SD_API_VER}_C_SRC_FILES "src/${SD_API_VER_L}/sdk/*.c")
-    file(GLOB_RECURSE LIB_SDK_${SD_API_VER}_CPP_SRC_FILES "src/${SD_API_VER_L}/sdk/*.cpp")
+    file(GLOB_RECURSE LIB_SDK_${SD_API_VER}_C_SRC_FILES "src/${SD_API_VER_L}/*.c")
+    file(GLOB_RECURSE LIB_SDK_${SD_API_VER}_CPP_SRC_FILES "src/${SD_API_VER_L}/*.cpp")
 endforeach(SD_API_VER)
 
 # Set C, CPP and platform source file groups and properties
@@ -42,6 +42,8 @@ foreach(SD_API_VER ${SD_API_VERS})
                           ${LIB_SDK_${SD_API_VER}_CPP_SRC_FILES}
                           #${LIB_TRANSPORT_CPP_SRC_FILES}
     )
+    
+
 endforeach(SD_API_VER)
 
 set(LIB_PLATFORM_SRC_FILES ${LIB_PLATFORM_C_SRC_FILES} ${LIB_PLATFORM_CPP_SRC_FILES})

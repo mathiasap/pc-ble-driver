@@ -3,15 +3,15 @@ from clang.cindex import CursorKind
 import ccsyspath
 import os
 
+
+# Install directory of LLVM/clang (32 bit)
 clang.cindex.Config.set_library_path('C:/Program Files (x86)/LLVM/bin')
 
 cwd = os.getcwd()
 os.chdir('..')
 pc_ble_drive_root = os.getcwd()
 sdk_root = pc_ble_drive_root+"\\src\\sd_api_v3\\sdk"
-
-os.chdir("{}\components\serialization\\application\codecs\s132\serializers".format(sdk_root))
-source_files_to_parse = os.listdir(".")
+source_files_to_parse = os.listdir("{}\components\serialization\\application\codecs\s132\serializers".format(sdk_root))
 os.chdir(cwd)
 
 functions = []
@@ -19,17 +19,26 @@ jsFunctions = []
 
 added_function_defs = set()
 
-def funcStr(name, args):
-    argsname = ["_{}".format(i) for i in range(len(args))]
+def funcStr(name, argv):
+    '''
+        Return wrapped C code for a function funcname with argument types argv
+    '''
+    argsname = ["_{}".format(i) for i in range(len(argv))]
     str = "EMSCRIPTEN_KEEPALIVE\n"
-    str += "void* emscripten_{0}({1}){{return (void*)({0}({2}));}}\n".format(name, ",".join([type+" "+name for type, name in zip(args,argsname)] ),  ",".join([name for name in argsname] ))
+    str += "void* emscripten_{0}({1}){{return (void*)({0}({2}));}}\n".format(name, ",".join([type+" "+name for type, name in zip(argv,argsname)] ),  ",".join([name for name in argsname] ))
     return str
 
 def createJsBindingString(funcname, args):
+    '''
+        Return wrapped JS binding for function funcname and args number of arguments
+    '''
     str = "'{}': Module.cwrap('{}', 'number', [{}])".format(funcname, "emscripten_"+funcname, ", ".join(["'number'"]*args))
     return str
 
 def filePointers(file_root, args):
+    '''
+        Return generator that iterates over clang compiled source files
+    '''
     idx = clang.cindex.Index.create()
     for filename in parse_files:
         yield idx.parse(file_root+filename, args=args)
@@ -73,17 +82,20 @@ for filename in source_files_to_parse:
 for tu in filePointers(file_root, compArgs):
     for c in tu.cursor.walk_preorder():
         if(c.kind == clang.cindex.CursorKind.FUNCTION_DECL and c.spelling.startswith("ble")):
+            '''
+                Parsed node is a C function with a name that starts with "ble"
+            '''
             try:
-                defstr = c.get_definition().displayname
+                defstr = c.get_definition().displayname #funcname(T0, T1, ...)
                 funcname = c.spelling
                 if funcname not in added_function_defs:
 
-                    args = defstr.replace(funcname,'')[1:-1].split(',')
+                    args = defstr.replace(funcname,'')[1:-1].split(',') # Removes parentheses and splits argument types.
 
-                    func_code = funcStr(funcname, args)
+                    func_code = funcStr(funcname, args) # C/C++ code to be compiled with emscripten
                     functions.append(func_code)
 
-                    js_code = createJsBindingString(funcname, len(args))
+                    js_code = createJsBindingString(funcname, len(args)) # JS-binding to interface emscripten
                     jsFunctions.append(js_code)
 
                     added_function_defs.add(funcname)
